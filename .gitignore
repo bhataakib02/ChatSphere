@@ -1,3 +1,5 @@
+tmp_spring/
+
 .env
 .env.local
 .env.*.local

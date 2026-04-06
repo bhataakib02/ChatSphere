@@ -38,7 +38,40 @@ If `mvn` fails with **JAVA_HOME** not set or pointing to a JRE:
 docker compose up -d postgres
 ```
 
+(or `npm run docker:db` from the repo root)
+
 This matches the default JDBC URL in `backend/src/main/resources/application-dev.yml` (`localhost:5432`, db `chatsphere`, user/password `postgres`).
+
+**Option A2 — Entire app in Docker (UI + API + Postgres)**
+
+Use this when you want one command with no local JDK/Node, or the same setup on any machine:
+
+```bash
+docker compose --profile stack up --build -d
+```
+
+(or `npm run docker:stack`)
+
+Then open **http://localhost:3000** (nginx serves the built React app and proxies `/api`, `/ws`, and `/uploads` to the backend). The API is also on **http://localhost:8080** if you need it directly.
+
+By default the stack uses Spring **`dev`** (schema `update`, seeded users **admin** / **user1** / **user2**, password `password`). For a **production-like** stack, create a **`.env`** file in the repo root (it is gitignored) or export variables before `docker compose up`. The backend service loads `.env` when present (optional).
+
+- `SPRING_PROFILES_ACTIVE=prod`
+- `JWT_SECRET` — required for `prod` (same rules as [Configuration & secrets](#configuration--secrets))
+- `SPRING_JPA_HIBERNATE_DDL_AUTO=update` on the **first** run against an empty database (then switch to `validate` when you rely on migrations)
+
+Example `.env` entries:
+
+```env
+SPRING_PROFILES_ACTIVE=prod
+JWT_SECRET=<your-base64-secret>
+SPRING_JPA_HIBERNATE_DDL_AUTO=update
+CORS_ALLOWED_ORIGIN_PATTERNS=https://your-domain.com
+```
+
+If your Docker Compose version does not support `required: false` for `env_file`, create an empty `.env` file or remove the `required: false` line from `docker-compose.yml` after copying `env.example` to `.env`.
+
+Adjust `CORS_ALLOWED_ORIGIN_PATTERNS` for your real browser origin(s). See `env.example`.
 
 **Option B — Your own Postgres**
 
@@ -46,31 +79,79 @@ Create database `chatsphere` and set `DB_URL`, `DB_USER`, `DB_PASSWORD` (see `en
 
 ### 2. Backend
 
-```bash
+You need **JDK 21** on your PATH (`java -version`) or set **`JAVA_HOME`** to the JDK install folder (not `bin`).
+
+From the repo:
+
+```powershell
 cd backend
-mvn spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
+
+The wrapper downloads Maven on first run (no global `mvn` install required). If you already have Maven: `mvn spring-boot:run` also works.
+
+Keep this terminal open; the API must be on **http://localhost:8080** or the Vite dev proxy will show `ECONNREFUSED` on `/api/...`.
 
 Default profile is `dev` (see `application.yml`). Dev profile seeds users **admin**, **user1**, **user2** (password `password`) if they do not exist.
 
 ### 3. Frontend
 
+From the **repository root** (or `cd frontend`):
+
 ```bash
-cd frontend
-npm install
+npm install --prefix frontend
 npm run dev
 ```
 
 Open `http://localhost:5173`. Vite proxies `/api` and `/ws` to `http://localhost:8080`.
 
-### Production API on another host
+**Order:** start the **backend first**, then the frontend—otherwise login calls fail with `http proxy error: ECONNREFUSED`.
 
-Build the frontend with:
+### Deploy: Vercel (frontend) + Java backend (Railway, Render, Fly.io, VPS, …)
 
-- `VITE_API_BASE_URL` — e.g. `https://api.example.com/api`
-- `VITE_WS_URL` — e.g. `wss://api.example.com/ws`
+**What is already in this repo**
 
-If unset, the client uses `/api` and same-origin `/ws` (typical behind one reverse proxy).
+- Root **`vercel.json`** — installs/builds from `./frontend`, outputs `frontend/dist`, and **SPA rewrites** so React Router works.
+- **`frontend/vercel.json`** — same rewrites if you set the Vercel project **Root Directory** to `frontend` instead of the repo root.
+
+**What you do**
+
+1. **Backend + Postgres** on a host that keeps the API **running continuously** (e.g. [Railway](https://railway.app), [Render](https://render.com), [Fly.io](https://fly.io), or a VPS with your `Dockerfile` / JAR).  
+   - Set **`SPRING_PROFILES_ACTIVE=prod`**, **`DB_URL`**, **`DB_USER`**, **`DB_PASSWORD`**, **`JWT_SECRET`** (see [Configuration & secrets](#configuration--secrets)).  
+   - On first deploy against an **empty** database, set **`SPRING_JPA_HIBERNATE_DDL_AUTO=update`** once, then prefer **`validate`** when you have real migrations.  
+   - Set **`CORS_ALLOWED_ORIGIN_PATTERNS`** to your Vercel origin, e.g. `https://your-app.vercel.app` (and your custom domain if you add one).  
+   - Note the public **HTTPS** base URL of the API (no trailing slash path fragment beyond what your app uses), e.g. `https://chatsphere-api.up.railway.app`.
+
+2. **Vercel** — import this Git repo.  
+   - If the Vercel **root** is the **repository root**, the root `vercel.json` is used (nothing extra to configure for build output).  
+   - If the Vercel **root** is **`frontend`**, Framework Preset can be Vite; `frontend/vercel.json` handles SPA routing.
+
+3. **Vercel → Settings → Environment Variables** (Production and Preview as you prefer):
+
+   | Name | Example value |
+   |------|----------------|
+   | `VITE_API_BASE_URL` | `https://your-api-host.example.com/api` |
+   | `VITE_WS_URL` | `wss://your-api-host.example.com/ws` |
+
+   Use **`wss://`** (not `ws://`) when the page is served over HTTPS. Hostname and path must match how your backend is exposed (same host as REST is typical).
+
+4. **Redeploy** the Vercel project after changing env vars (Vite bakes them in at build time).
+
+**Local build check (same as Vercel)**
+
+```bash
+set VITE_API_BASE_URL=https://your-api/api
+set VITE_WS_URL=wss://your-api/ws
+npm run build --prefix frontend
+```
+
+(PowerShell: `$env:VITE_API_BASE_URL = "..."` etc.)
+
+If those variables are **unset**, the app uses **`/api`** and browser **`/ws`** (same origin — fine behind nginx/Docker, not fine for Vercel-only static hosting without a rewrite to your API).
+
+### Production API on another host (any static host)
+
+Same as the Vercel table: set **`VITE_API_BASE_URL`** and **`VITE_WS_URL`** when the UI and API are on different origins.
 
 ## Configuration & secrets
 
@@ -98,7 +179,9 @@ Copy `env.example` as a checklist. For local Spring overrides without committing
 
 - `backend/` — Spring Boot, JPA, security, WebSocket
 - `frontend/` — React + Vite
-- `docker-compose.yml` — Postgres for local dev
+- `docker-compose.yml` — Postgres only by default; add `--profile stack` for backend + frontend images
+- `backend/Dockerfile`, `frontend/Dockerfile` — production-style JAR and nginx static + reverse proxy
+- `vercel.json` (root) — Vercel build for the monorepo; `frontend/vercel.json` if Root Directory is `frontend`
 - `.github/workflows/ci.yml` — Maven tests + frontend lint/build
 
 ## Contacts & requests
