@@ -1,0 +1,22 @@
+# Copy to a local file (e.g. render.env), fill secrets, then paste into Render → Web Service → Environment.
+# Do NOT commit real passwords or JWT_SECRET.
+#
+# Spring listens on Render's PORT automatically (see application.yml). You do not need SERVER_PORT unless you override.
+
+SPRING_PROFILES_ACTIVE=prod
+
+# Prefer JDBC form (required by Spring). You may also paste Aiven "Service URI" (postgres://...)
+# after deploying the backend with JdbcUrlEnvironmentPostProcessor — it is converted at startup.
+DB_URL=jdbc:postgresql://YOUR-AIVEN-HOST:YOUR-PORT/defaultdb?sslmode=require
+DB_USER=avnadmin
+DB_PASSWORD=your-aiven-password
+
+# Base64, decode length >= 256 bits (see README / env.example).
+JWT_SECRET=your-long-base64-secret
+
+# Empty DB first deploy: update. After tables exist: validate.
+SPRING_JPA_HIBERNATE_DDL_AUTO=update
+
+# Option 2 (deploy Render before Vercel): allow any Vercel preview/production subdomain.
+# After you know your real URL, replace with that exact origin for tighter security.
+CORS_ALLOWED_ORIGIN_PATTERNS=https://*.vercel.app
