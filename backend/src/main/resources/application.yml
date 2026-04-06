@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:chatsphere-db-retailapp02.a.aivencloud.com}:${DB_PORT:13259}/defaultdb?sslmode=require
+    username: ${DB_USER:avnadmin}
+    password: ${DB_PASSWORD:}
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 5
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.springframework.security: DEBUG
