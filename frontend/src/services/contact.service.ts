@@ -1,50 +1,46 @@
-import axios from 'axios';
-import authHeader from './auth-header';
-
-const API = '/api/contacts';
+import api from '../api';
 
 class ContactService {
     getContacts() {
-        return axios.get(API, { headers: authHeader() });
+        return api.get('/contacts');
     }
 
     searchForAdd(q: string) {
-        return axios.get(`${API}/search`, {
-            headers: authHeader(),
+        return api.get('/contacts/search', {
             params: { q },
         });
     }
 
     sendRequest(receiverId: number) {
-        return axios.post(`${API}/requests`, { receiverId }, { headers: authHeader() });
+        return api.post('/contacts/requests', { receiverId });
     }
 
     getIncomingRequests() {
-        return axios.get(`${API}/requests/incoming`, { headers: authHeader() });
+        return api.get('/contacts/requests/incoming');
     }
 
     getOutgoingRequests() {
-        return axios.get(`${API}/requests/outgoing`, { headers: authHeader() });
+        return api.get('/contacts/requests/outgoing');
     }
 
     acceptRequest(requestId: number) {
-        return axios.post(`${API}/requests/${requestId}/accept`, {}, { headers: authHeader() });
+        return api.post(`/contacts/requests/${requestId}/accept`, {});
     }
 
     rejectRequest(requestId: number) {
-        return axios.post(`${API}/requests/${requestId}/reject`, {}, { headers: authHeader() });
+        return api.post(`/contacts/requests/${requestId}/reject`, {});
     }
 
     cancelRequest(requestId: number) {
-        return axios.delete(`${API}/requests/${requestId}`, { headers: authHeader() });
+        return api.delete(`/contacts/requests/${requestId}`);
     }
 
     blockUser(userId: number) {
-        return axios.post(`${API}/block/${userId}`, {}, { headers: authHeader() });
+        return api.post(`/contacts/block/${userId}`, {});
     }
 
     unblockUser(userId: number) {
-        return axios.delete(`${API}/block/${userId}`, { headers: authHeader() });
+        return api.delete(`/contacts/block/${userId}`);
     }
 }
 

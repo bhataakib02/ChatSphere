@@ -5,7 +5,7 @@ import AuthService from '../services/auth.service';
 import ChatService from '../services/chat.service';
 import ContactService from '../services/contact.service';
 import MessageService from '../services/message.service';
-import axios from 'axios';
+import api from '../api';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -200,8 +200,9 @@ const Dashboard = () => {
     };
 
     const connectWebSocket = (token: string) => {
-        const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-        const wsUrl = `${proto}://${window.location.host}/ws`;
+        const wsUrl = import.meta.env.VITE_WS_URL?.trim()
+            ? import.meta.env.VITE_WS_URL.trim()
+            : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
 
         const stompClient = new Client({
             brokerURL: wsUrl,
@@ -714,7 +715,7 @@ const Dashboard = () => {
             }));
 
             // Sync public key to backend
-            await axios.put(`/api/users/${user.id}`, {
+            await api.put(`/users/${user.id}`, {
                 ...user,
                 publicKey: publicKeyBase64
             });
@@ -746,9 +747,7 @@ const Dashboard = () => {
                 updatePayload.profilePicture = profilePhotoPreview;
                 updatePayload.profilePhoto = profilePhotoPreview;
             }
-            const res = await axios.put(`/api/users/${currentUser.id}`, updatePayload, {
-                headers: { Authorization: `Bearer ${currentUser.token}` }
-            });
+            const res = await api.put(`/users/${currentUser.id}`, updatePayload);
             const updatedUser = res.data;
             setCurrentUser({ ...currentUser, ...updatedUser });
             setProfileUsername(updatedUser.username);

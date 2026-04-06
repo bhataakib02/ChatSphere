@@ -17,6 +17,10 @@ JWT_SECRET=your-long-base64-secret
 # Empty DB first deploy: update. After tables exist: validate.
 SPRING_JPA_HIBERNATE_DDL_AUTO=update
 
+# Optional: default prod pool is small (4) for hobby/low max_connections Postgres. Raise if your plan allows.
+# SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=10
+# SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE=2
+
 # Option 2 (deploy Render before Vercel): allow any Vercel preview/production subdomain.
 # After you know your real URL, replace with that exact origin for tighter security.
 CORS_ALLOWED_ORIGIN_PATTERNS=https://*.vercel.app
