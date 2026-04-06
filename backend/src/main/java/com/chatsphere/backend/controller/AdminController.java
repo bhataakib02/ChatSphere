@@ -7,7 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -38,8 +37,7 @@ public class AdminController {
         stats.put("totalChats", chatRepository.count());
         stats.put("totalMessages", messageRepository.count());
         
-        long activeCount = userRepository.findAll().stream().filter(User::isOnline).count();
-        stats.put("activeUsers", activeCount);
+        stats.put("activeUsers", userRepository.countByOnlineTrue());
         
         return ResponseEntity.ok(stats);
     }

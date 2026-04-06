@@ -9,9 +9,9 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #0f172a;
+  color-scheme: light;
+  color: #3d2c3e;
+  background-color: #fff0f3;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,13 +21,11 @@
 
 body {
   margin: 0;
-  /* Executive Fruit Palette */
-  --berry-primary: #a33185;
-  --peach-highlight: #ff8a65;
-  --lime-status: #c0ca33;
-  --tangerine-active: #ffa726;
-
-  /* Romantic Duo Palette */
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  /* Duo + legacy CSS variable hooks */
   --rose-love: #ff4d6d;
   --blush-accent: #ff85a1;
   --lavender-soft: #c9ada7;
@@ -36,6 +34,7 @@ body {
   --glass-bg: rgba(255, 255, 255, 0.45);
   --glass-border: rgba(255, 255, 255, 0.3);
   --glass-shadow: 0 8px 32px 0 rgba(255, 77, 109, 0.1);
+  background-color: var(--petal-bg);
 }
 
 .glass-morphism {
@@ -51,15 +50,6 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-  background-color: var(--petal-bg);
 }
 
 #root {

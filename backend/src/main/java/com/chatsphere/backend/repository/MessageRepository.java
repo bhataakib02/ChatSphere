@@ -12,7 +12,7 @@ import java.util.List;
 
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Long> {
-    List<Message> findByChatIdOrderByCreatedAtAsc(Long chatId);
+    List<Message> findByChat_IdOrderByCreatedAtAsc(Long chatId);
 
     @Modifying
     @Transactional

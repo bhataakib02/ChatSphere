@@ -32,6 +32,7 @@ public class User {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String password;
 
+    /** Legacy duplicate of {@link #profilePicture}; both kept for DB compatibility. */
     private String profilePhoto;
     private String profilePicture;
 

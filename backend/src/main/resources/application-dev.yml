@@ -1,0 +1,20 @@
+# Local development. Prefer docker-compose Postgres (see repo root).
+spring:
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/chatsphere}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 10
+
+jwt:
+  # Dev-only default (Base64, 256+ bits when decoded). Override with JWT_SECRET in any shared environment.
+  secret: ${JWT_SECRET:dGhpcyBpcyBhIHZlcnkgbG9uZyBzZWNyZXQga2V5IGZvciBqd3QgdG9rZW4gZ2VuZXJhdGlvbiBhbmQgdmFsaWRhdGlvbg==}
+
+logging:
+  level:
+    org.springframework.security: DEBUG

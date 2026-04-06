@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Client } from '@stomp/stompjs';
 import AuthService from '../services/auth.service';
 import ChatService from '../services/chat.service';
-import UserService from '../services/user.service';
+import ContactService from '../services/contact.service';
 import MessageService from '../services/message.service';
 import axios from 'axios';
 
@@ -43,6 +43,16 @@ const Dashboard = () => {
     const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
     const [isCreatingGroup, setIsCreatingGroup] = useState(false);
 
+    const [showAddContactModal, setShowAddContactModal] = useState(false);
+    const [showRequestsModal, setShowRequestsModal] = useState(false);
+    const [addSearchQuery, setAddSearchQuery] = useState('');
+    const [addSearchResults, setAddSearchResults] = useState<any[]>([]);
+    const [addSearchLoading, setAddSearchLoading] = useState(false);
+    const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
+    const [outgoingRequests, setOutgoingRequests] = useState<any[]>([]);
+    const [incomingCount, setIncomingCount] = useState(0);
+    const [requestsTab, setRequestsTab] = useState<'incoming' | 'outgoing'>('incoming');
+
     // Profile Settings
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [bio, setBio] = useState("");
@@ -51,11 +61,9 @@ const Dashboard = () => {
     const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
     const profilePhotoInputRef = useRef<HTMLInputElement>(null);
 
-    // Search
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [userSearchTerm, _setUserSearchTerm] = useState("");
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [msgSearchTerm, _setMsgSearchTerm] = useState("");
+    // Search (setters reserved for future UI wiring)
+    const [userSearchTerm] = useState("");
+    const [msgSearchTerm] = useState("");
 
     // Media Preview
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -85,6 +93,7 @@ const Dashboard = () => {
             if (stompClientRef.current) stompClientRef.current.deactivate();
             cancelRecording();
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- session bootstrap; cancelRecording stable for teardown intent
     }, [navigate]);
 
     useEffect(() => {
@@ -95,15 +104,98 @@ const Dashboard = () => {
 
     const fetchInitialData = async (userId: number) => {
         try {
-            const [usersRes, chatsRes] = await Promise.all([
-                UserService.getAllUsers(),
-                ChatService.getUserChats(userId)
+            const [contactsRes, chatsRes, incomingRes] = await Promise.all([
+                ContactService.getContacts(),
+                ChatService.getUserChats(userId),
+                ContactService.getIncomingRequests(),
             ]);
-            const others = usersRes.data.filter((u: any) => u.id !== userId);
-            setUsers(others);
+            setUsers(contactsRes.data);
             setChats(chatsRes.data);
+            setIncomingCount(incomingRes.data?.length ?? 0);
         } catch (error) {
             console.error("Fetch data error", error);
+        }
+    };
+
+    const loadContactsOnly = async () => {
+        try {
+            const contactsRes = await ContactService.getContacts();
+            setUsers(contactsRes.data);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const loadRequests = async () => {
+        try {
+            const [inc, out] = await Promise.all([
+                ContactService.getIncomingRequests(),
+                ContactService.getOutgoingRequests(),
+            ]);
+            setIncomingRequests(inc.data);
+            setOutgoingRequests(out.data);
+            setIncomingCount(inc.data.length);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const runAddSearch = async () => {
+        const q = addSearchQuery.trim();
+        if (q.length < 2) {
+            alert('Type at least 2 characters (username or email).');
+            return;
+        }
+        setAddSearchLoading(true);
+        try {
+            const res = await ContactService.searchForAdd(q);
+            setAddSearchResults(res.data);
+        } catch {
+            setAddSearchResults([]);
+        } finally {
+            setAddSearchLoading(false);
+        }
+    };
+
+    const handleSendContactRequest = async (receiverId: number) => {
+        try {
+            await ContactService.sendRequest(receiverId);
+            alert('Request sent.');
+            setAddSearchResults(prev => prev.filter((u: any) => u.id !== receiverId));
+            await loadRequests();
+        } catch (e: any) {
+            const msg = e.response?.data?.message || e.response?.data?.error || 'Could not send request.';
+            alert(typeof msg === 'string' ? msg : 'Could not send request.');
+        }
+    };
+
+    const handleAcceptRequest = async (requestId: number) => {
+        try {
+            const res = await ContactService.acceptRequest(requestId);
+            const chat = res.data;
+            setChats((prev) => (prev.some((c) => c.id === chat.id) ? prev : [...prev, chat]));
+            await loadContactsOnly();
+            await loadRequests();
+        } catch {
+            alert('Could not accept request.');
+        }
+    };
+
+    const handleRejectRequest = async (requestId: number) => {
+        try {
+            await ContactService.rejectRequest(requestId);
+            await loadRequests();
+        } catch {
+            alert('Could not reject request.');
+        }
+    };
+
+    const handleCancelOutgoing = async (requestId: number) => {
+        try {
+            await ContactService.cancelRequest(requestId);
+            await loadRequests();
+        } catch {
+            alert('Could not cancel request.');
         }
     };
 
@@ -184,7 +276,6 @@ const Dashboard = () => {
                         } else {
                             newSet.delete(payload.username);
                         }
-                        return newSet;
                         return newSet;
                     });
                 });
@@ -269,7 +360,7 @@ const Dashboard = () => {
             setShowGroupModal(false);
             setGroupName("");
             setSelectedUsers([]);
-        } catch (err) {
+        } catch {
             alert("Failed to create group.");
         } finally {
             setIsCreatingGroup(false);
@@ -336,7 +427,7 @@ const Dashboard = () => {
             setSelectedFile(null);
             setFilePreview(null);
             setFileCaption("");
-        } catch (error) {
+        } catch {
             alert("File upload failed!");
         } finally {
             setIsUploading(false);
@@ -448,7 +539,7 @@ const Dashboard = () => {
                         destination: '/app/chat.sendMessage',
                         body: JSON.stringify(chatMessage),
                     });
-                } catch (error) {
+                } catch {
                     alert("Voice message failed.");
                 } finally {
                     setIsUploading(false);
@@ -740,6 +831,28 @@ const Dashboard = () => {
                             className="w-full bg-white/60 border border-rose-100 rounded-2xl py-3 pl-12 pr-4 text-rose-900 placeholder-rose-300 focus:outline-none focus:ring-4 focus:ring-[#ff4d6d]/10 focus:border-[#ff4d6d]/40 transition-all font-medium" />
                         <svg className="w-5 h-5 absolute left-4 top-3.5 text-rose-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
+
+                    <div className="flex gap-2 mb-2">
+                        <button
+                            type="button"
+                            onClick={() => { setShowAddContactModal(true); setAddSearchQuery(''); setAddSearchResults([]); }}
+                            className="flex-1 py-2.5 rounded-xl bg-white/70 border border-rose-200 text-rose-600 text-[10px] font-black uppercase tracking-widest hover:bg-[#ff4d6d]/10 transition-all"
+                        >
+                            Add contact
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => { setShowRequestsModal(true); loadRequests(); }}
+                            className="flex-1 py-2.5 rounded-xl bg-white/70 border border-rose-200 text-rose-600 text-[10px] font-black uppercase tracking-widest hover:bg-[#ff4d6d]/10 transition-all relative"
+                        >
+                            Requests
+                            {incomingCount > 0 ? (
+                                <span className="absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-5 px-1 flex items-center justify-center rounded-full bg-[#ff4d6d] text-white text-[9px] font-black">
+                                    {incomingCount}
+                                </span>
+                            ) : null}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-4">
@@ -761,7 +874,7 @@ const Dashboard = () => {
                             const displayName = c.isGroup ? c.name : otherParticipants.map((p: any) => p.username).join(", ");
                             return displayName.toLowerCase().includes(userSearchTerm.toLowerCase());
                         }).length === 0 ? (
-                            <div className="p-3 text-xs text-slate-500/70 italic text-center">No matching chats</div>
+                            <div className="p-3 text-xs text-primary-900/35 italic text-center">No matching chats</div>
                         ) : (
                             <div className="space-y-0.5">
                                 {chats.filter(c => {
@@ -799,27 +912,33 @@ const Dashboard = () => {
 
                     <div className="h-px bg-rose-200/50 mx-4"></div>
 
-                    {/* Users list */}
+                    {/* Contacts only — use Add contact to send a request */}
                     <div>
-                        <div className="px-3 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">Available Users</div>
+                        <div className="px-3 text-[10px] font-black text-rose-400 uppercase tracking-widest mb-3">Your contacts</div>
                         <div className="space-y-0.5">
-                            {users.filter(u => u.username.toLowerCase().includes(userSearchTerm.toLowerCase())).map(user => (
-                                <div key={user.id} onClick={() => startChat(user)}
-                                    className="p-3 flex items-center space-x-3 rounded-2xl hover:bg-white/40 cursor-pointer transition-all border border-transparent group">
-                                    <div className="h-9 w-9 rounded-[1rem] bg-rose-50 text-rose-500 flex items-center justify-center font-black text-xs border border-rose-100 group-hover:bg-[#ff4d6d] group-hover:text-white transition-all shrink-0 relative">
-                                        {user.username.charAt(0).toUpperCase()}
-                                        {user.online && (
-                                            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#c0ca33] border-2 border-white rounded-full shadow-sm"></span>
-                                        )}
-                                    </div>
-                                    <div className="font-black text-rose-900 text-sm flex-1 truncate">{user.username}</div>
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-rose-500/10 p-1.5 rounded-full">
-                                        <svg className="w-4 h-4 text-[#ff4d6d]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                        </svg>
-                                    </div>
+                            {users.filter(u => u.username.toLowerCase().includes(userSearchTerm.toLowerCase())).length === 0 ? (
+                                <div className="px-3 py-4 text-xs text-primary-900/40 text-center font-medium leading-relaxed">
+                                    No contacts yet. Use <span className="font-black text-rose-500">Add contact</span> to find someone by username or email and send a request.
                                 </div>
-                            ))}
+                            ) : (
+                                users.filter(u => u.username.toLowerCase().includes(userSearchTerm.toLowerCase())).map(user => (
+                                    <div key={user.id} onClick={() => startChat(user)}
+                                        className="p-3 flex items-center space-x-3 rounded-2xl hover:bg-white/40 cursor-pointer transition-all border border-transparent group">
+                                        <div className="h-9 w-9 rounded-[1rem] bg-rose-50 text-rose-500 flex items-center justify-center font-black text-xs border border-rose-100 group-hover:bg-[#ff4d6d] group-hover:text-white transition-all shrink-0 relative">
+                                            {user.username.charAt(0).toUpperCase()}
+                                            {user.online && (
+                                                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#c0ca33] border-2 border-white rounded-full shadow-sm"></span>
+                                            )}
+                                        </div>
+                                        <div className="font-black text-rose-900 text-sm flex-1 truncate">{user.username}</div>
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-rose-500/10 p-1.5 rounded-full">
+                                            <svg className="w-4 h-4 text-[#ff4d6d]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>
@@ -930,7 +1049,7 @@ const Dashboard = () => {
                                                 <div className="text-[13px] md:text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</div>
                                             )}
 
-                                            <div className={`text-[9px] md:text-[10px] mt-1.5 md:mt-2 flex items-center justify-end space-x-1 ${isMe ? 'text-white/70' : 'text-slate-500'}`}>
+                                            <div className={`text-[9px] md:text-[10px] mt-1.5 md:mt-2 flex items-center justify-end space-x-1 ${isMe ? 'text-white/70' : 'text-primary-900/40'}`}>
                                                 <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                 {isMe && (
                                                     <span>
@@ -1126,6 +1245,122 @@ const Dashboard = () => {
                 @keyframes bounce-short { 0%, 100% { transform: translateY(0) rotate(3deg); } 50% { transform: translateY(-10px) rotate(3deg); } }
                 .animate-bounce-short { animation: bounce-short 3s ease-in-out infinite; }
             `}} />
+
+            {showAddContactModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-white/20 backdrop-blur-xl" onClick={() => setShowAddContactModal(false)}></div>
+                    <div className="bg-white/90 border border-white/60 w-full max-w-md rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(255,77,109,0.3)] relative z-10 overflow-hidden flex flex-col animate-fade-in-up max-h-[85vh]">
+                        <div className="p-6 border-b border-white/60 bg-white/40 flex justify-between items-center text-[#ff4d6d]">
+                            <h3 className="text-xl font-black tracking-tight">Add contact</h3>
+                            <button type="button" onClick={() => setShowAddContactModal(false)} className="p-2 hover:bg-[#ff4d6d]/10 rounded-full transition-all">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="p-6 flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                            <p className="text-xs text-gray-500 font-medium">Search by username or email (min. 2 characters). People who are already contacts, blocked, or have a pending request won&apos;t appear.</p>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={addSearchQuery}
+                                    onChange={(e) => setAddSearchQuery(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && runAddSearch()}
+                                    placeholder="username or email"
+                                    className="flex-1 bg-white/60 border border-white/60 rounded-2xl px-4 py-3 text-gray-800 focus:outline-none focus:ring-4 focus:ring-[#ff4d6d]/10 font-bold text-sm"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={runAddSearch}
+                                    disabled={addSearchLoading}
+                                    className="px-4 py-3 rounded-2xl bg-gradient-to-r from-[#ff4d6d] to-[#ff85a1] text-white font-black text-xs uppercase tracking-widest disabled:opacity-50"
+                                >
+                                    {addSearchLoading ? '…' : 'Search'}
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {addSearchResults.map((u: any) => (
+                                    <div key={u.id} className="flex items-center justify-between p-3 rounded-2xl bg-white/50 border border-white/60">
+                                        <div>
+                                            <div className="font-black text-gray-800 text-sm">{u.username}</div>
+                                            <div className="text-[10px] text-gray-500 truncate max-w-[200px]">{u.email}</div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSendContactRequest(u.id)}
+                                            className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl bg-[#ff4d6d]/10 text-[#ff4d6d] border border-[#ff4d6d]/30 hover:bg-[#ff4d6d] hover:text-white transition-all"
+                                        >
+                                            Send request
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showRequestsModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-white/20 backdrop-blur-xl" onClick={() => setShowRequestsModal(false)}></div>
+                    <div className="bg-white/90 border border-white/60 w-full max-w-md rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(255,77,109,0.3)] relative z-10 overflow-hidden flex flex-col animate-fade-in-up max-h-[85vh]">
+                        <div className="p-6 border-b border-white/60 bg-white/40 flex justify-between items-center text-[#ff4d6d]">
+                            <h3 className="text-xl font-black tracking-tight">Requests</h3>
+                            <button type="button" onClick={() => setShowRequestsModal(false)} className="p-2 hover:bg-[#ff4d6d]/10 rounded-full transition-all">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <div className="flex border-b border-white/60">
+                            <button
+                                type="button"
+                                onClick={() => setRequestsTab('incoming')}
+                                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest ${requestsTab === 'incoming' ? 'text-[#ff4d6d] border-b-2 border-[#ff4d6d]' : 'text-gray-400'}`}
+                            >
+                                Incoming
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setRequestsTab('outgoing')}
+                                className={`flex-1 py-3 text-[10px] font-black uppercase tracking-widest ${requestsTab === 'outgoing' ? 'text-[#ff4d6d] border-b-2 border-[#ff4d6d]' : 'text-gray-400'}`}
+                            >
+                                Sent
+                            </button>
+                        </div>
+                        <div className="p-4 flex-1 overflow-y-auto custom-scrollbar space-y-2 min-h-[200px]">
+                            {requestsTab === 'incoming' ? (
+                                incomingRequests.length === 0 ? (
+                                    <p className="text-center text-xs text-gray-400 py-8">No incoming requests.</p>
+                                ) : (
+                                    incomingRequests.map((r: any) => (
+                                        <div key={r.id} className="p-3 rounded-2xl bg-white/50 border border-white/60 flex items-center justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <div className="font-black text-gray-800 text-sm truncate">{r.sender?.username}</div>
+                                                <div className="text-[10px] text-gray-500 truncate">{r.sender?.email}</div>
+                                            </div>
+                                            <div className="flex gap-1 shrink-0">
+                                                <button type="button" onClick={() => handleAcceptRequest(r.id)} className="px-2 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-700 text-[10px] font-black uppercase">Accept</button>
+                                                <button type="button" onClick={() => handleRejectRequest(r.id)} className="px-2 py-1.5 rounded-lg bg-red-500/10 text-red-600 text-[10px] font-black uppercase">Reject</button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )
+                            ) : (
+                                outgoingRequests.length === 0 ? (
+                                    <p className="text-center text-xs text-gray-400 py-8">No outgoing requests.</p>
+                                ) : (
+                                    outgoingRequests.map((r: any) => (
+                                        <div key={r.id} className="p-3 rounded-2xl bg-white/50 border border-white/60 flex items-center justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <div className="font-black text-gray-800 text-sm truncate">{r.receiver?.username}</div>
+                                                <div className="text-[10px] text-gray-500">Pending</div>
+                                            </div>
+                                            <button type="button" onClick={() => handleCancelOutgoing(r.id)} className="px-2 py-1.5 rounded-lg bg-gray-500/10 text-gray-700 text-[10px] font-black uppercase shrink-0">Cancel</button>
+                                        </div>
+                                    ))
+                                )
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Group Modal */}
             {
