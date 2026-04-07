@@ -12,6 +12,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/admin")
+@org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class AdminController {
 
     @Autowired private UserRepository userRepository;
@@ -63,7 +64,9 @@ public class AdminController {
         return userRepository.findById(id).map(user -> {
             try {
                 ERole oldRole = user.getRole();
-                user.setRole(ERole.valueOf(payload.get("role")));
+                String roleStr = payload.get("role");
+                if (!roleStr.startsWith("ROLE_")) roleStr = "ROLE_" + roleStr.toUpperCase();
+                user.setRole(ERole.valueOf(roleStr));
                 userRepository.save(user);
                 
                 UserDetailsImpl current = (UserDetailsImpl) auth.getPrincipal();
@@ -151,6 +154,7 @@ public class AdminController {
     }
 
     @DeleteMapping("/cleanup")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> performCleanup(@RequestParam String type) {
         // Implementation for Point 20: Data Management
         if ("MESSAGES".equals(type)) {
@@ -309,6 +313,7 @@ public class AdminController {
     }
 
     @PostMapping("/broadcast")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> broadcastMessage(@RequestBody Map<String, String> payload, org.springframework.security.core.Authentication auth) {
         String content = payload.get("message");
         Map<String, Object> announcement = new HashMap<>();
@@ -331,6 +336,7 @@ public class AdminController {
     }
 
     @PutMapping("/settings")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> updateSettings(@RequestBody List<SystemSetting> settings, org.springframework.security.core.Authentication auth) {
         systemSettingRepository.saveAll(settings);
 
