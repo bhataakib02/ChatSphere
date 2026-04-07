@@ -109,13 +109,19 @@ public class ContactService {
 
         Long a = fr.getSender().getId();
         Long b = fr.getReceiver().getId();
+        
+        if (fr.getStatus() == EFriendRequestStatus.ACCEPTED) {
+            // Already handled, just return the chat
+            return findOrCreateDirectChat(a, b);
+        }
+
         fr.setStatus(EFriendRequestStatus.ACCEPTED);
         friendRequestRepository.save(fr);
 
         long[] o = Contact.orderedIds(a, b);
         if (contactRepository.findByOrderedPair(o[0], o[1]).isEmpty()) {
-            User low = userRepository.findById(o[0]).orElseThrow();
-            User high = userRepository.findById(o[1]).orElseThrow();
+            User low = userRepository.findById(o[0]).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+            User high = userRepository.findById(o[1]).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
             Contact c = new Contact();
             c.setUserLow(low);
             c.setUserHigh(high);
@@ -123,7 +129,15 @@ public class ContactService {
             contactRepository.save(c);
         }
 
-        return findOrCreateDirectChat(a, b);
+        Chat chat = findOrCreateDirectChat(a, b);
+        // Ensure participants are loaded
+        if (chat.getParticipants() == null || chat.getParticipants().isEmpty()) {
+            User ua = userRepository.findById(a).orElseThrow();
+            User ub = userRepository.findById(b).orElseThrow();
+            chat.setParticipants(new ArrayList<>(List.of(ua, ub)));
+            chat = chatRepository.save(chat);
+        }
+        return chat;
     }
 
     @Transactional

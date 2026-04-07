@@ -22,6 +22,27 @@ export const AdminUsers = ({ users, setUsers, currentUserRole }: { users: any[],
         }
     };
 
+    const deleteUser = async (userId: number) => {
+        if (!window.confirm("Are you SURE you want to permanently delete this user? This cannot be undone.")) return;
+        try {
+            await api.delete(`/admin/users/${userId}`);
+            setUsers(users.filter(u => u.id !== userId));
+        } catch (e: any) {
+            alert(e.response?.data?.error || "Failed to delete user.");
+        }
+    };
+
+    const resetPassword = async (userId: number) => {
+        const newPass = window.prompt("Enter new password for this user (min 6 chars):");
+        if (!newPass) return;
+        try {
+            await api.put(`/admin/users/${userId}/reset-password`, { password: newPass });
+            alert("Password reset successfully.");
+        } catch (e: any) {
+            alert(e.response?.data?.error || "Failed to reset password.");
+        }
+    };
+
     const filteredUsers = users.filter(u =>
         u.username.toLowerCase().includes(search.toLowerCase()) ||
         u.email.toLowerCase().includes(search.toLowerCase())
@@ -90,7 +111,6 @@ export const AdminUsers = ({ users, setUsers, currentUserRole }: { users: any[],
                                             className="bg-black/20 border border-white/10 rounded-lg text-xs font-bold px-2 py-1.5 text-white focus:outline-none focus:border-primary-500/50 cursor-pointer"
                                         >
                                             <option value="ROLE_USER">User</option>
-                                            <option value="ROLE_ADMIN">Admin</option>
                                             <option value="ROLE_SUPER_ADMIN">Super Admin</option>
                                         </select>
                                     ) : (
@@ -120,17 +140,34 @@ export const AdminUsers = ({ users, setUsers, currentUserRole }: { users: any[],
                                     )}
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <button
-                                        type="button"
-                                        onClick={() => toggleLock(user.id)}
-                                        disabled={user.role === 'ROLE_SUPER_ADMIN' && currentUserRole !== 'ROLE_SUPER_ADMIN'}
-                                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${user.locked
-                                            ? 'bg-primary-500/15 text-primary-300 border border-primary-500/30 hover:bg-primary-500 hover:text-white'
-                                            : 'bg-red-500/10 text-red-300 border border-red-500/30 hover:bg-red-500 hover:text-white'
-                                            }`}
-                                    >
-                                        {user.locked ? 'UNBAN' : 'BAN USER'}
-                                    </button>
+                                    <div className="flex justify-end space-x-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => resetPassword(user.id)}
+                                            className="px-3 py-2 rounded-lg text-xs font-bold bg-white/10 text-white border border-white/20 hover:bg-white/20 transition-all"
+                                        >
+                                            EDIT PASS
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleLock(user.id)}
+                                            disabled={user.role === 'ROLE_SUPER_ADMIN' && user.id === 1}
+                                            className={`px-3 py-2 rounded-lg text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${user.locked
+                                                ? 'bg-primary-500/15 text-primary-300 border border-primary-500/30 hover:bg-primary-500 hover:text-white'
+                                                : 'bg-red-500/10 text-red-300 border border-red-500/30 hover:bg-red-500 hover:text-white'
+                                                }`}
+                                        >
+                                            {user.locked ? 'UNBAN' : 'BAN'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => deleteUser(user.id)}
+                                            disabled={user.role === 'ROLE_SUPER_ADMIN'}
+                                            className="px-3 py-2 rounded-lg text-xs font-bold bg-rose-600/20 text-rose-400 border border-rose-600/30 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-30"
+                                        >
+                                            DELETE
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}

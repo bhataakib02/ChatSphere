@@ -12,7 +12,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/admin")
-@org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+@org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN')")
 public class AdminController {
 
     @Autowired private UserRepository userRepository;
@@ -59,7 +59,6 @@ public class AdminController {
     }
 
     @PutMapping("/users/{id}/role")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> updateUserRole(@PathVariable Long id, @RequestBody Map<String, String> payload, org.springframework.security.core.Authentication auth) {
         return userRepository.findById(id).map(user -> {
             try {
@@ -77,6 +76,40 @@ public class AdminController {
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Invalid role"));
             }
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<?> deleteUser(@PathVariable Long id, org.springframework.security.core.Authentication auth) {
+        return userRepository.findById(id).map(user -> {
+            // Check if we are trying to delete ourselves
+            UserDetailsImpl current = (UserDetailsImpl) auth.getPrincipal();
+            if (user.getId().equals(current.getId())) {
+                return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Cannot delete your own super admin account"));
+            }
+
+            userRepository.delete(user);
+            User admin = userRepository.findById(current.getId()).orElse(null);
+            adminLogRepository.save(new AdminLog(admin, "DELETE_USER", "Permanently deleted user account: " + user.getUsername(), user.getId().toString()));
+            return ResponseEntity.ok(Collections.singletonMap("deleted", true));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/users/{id}/reset-password")
+    public ResponseEntity<?> resetUserPassword(@PathVariable Long id, @RequestBody Map<String, String> payload, org.springframework.security.core.Authentication auth) {
+        String newPassword = payload.get("password");
+        if (newPassword == null || newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Password must be at least 6 characters"));
+        }
+        
+        return userRepository.findById(id).map(user -> {
+            user.setPassword(new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(newPassword));
+            userRepository.save(user);
+            
+            UserDetailsImpl current = (UserDetailsImpl) auth.getPrincipal();
+            User admin = userRepository.findById(current.getId()).orElse(null);
+            adminLogRepository.save(new AdminLog(admin, "RESET_PASSWORD", "Administratively reset password for user: " + user.getUsername(), user.getId().toString()));
+            return ResponseEntity.ok(Collections.singletonMap("reset", true));
         }).orElse(ResponseEntity.notFound().build());
     }
 

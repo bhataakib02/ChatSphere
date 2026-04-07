@@ -68,7 +68,14 @@ public class ChatWebSocketController {
 
         Message savedMessage = messageRepository.save(message);
         autoModService.scanAndFlag(savedMessage);
+        
+        // 1. Broadcast to the specific chat topic (for active chat windows)
         messagingTemplate.convertAndSend("/topic/chat/" + chat.getId(), savedMessage);
+        
+        // 2. Broadcast to participant personal topics (for background notifications)
+        for (User p : chat.getParticipants()) {
+            messagingTemplate.convertAndSend("/queue/user/" + p.getId() + "/notifications", savedMessage);
+        }
     }
 
     @MessageMapping("/chat.typing")

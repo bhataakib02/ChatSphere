@@ -75,6 +75,11 @@ const Dashboard = () => {
 
     const stompClientRef = useRef<Client | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const activeChatRef = useRef<any>(null);
+
+    useEffect(() => {
+        activeChatRef.current = activeChat;
+    }, [activeChat]);
 
     useEffect(() => {
         const user = AuthService.getCurrentUser();
@@ -173,11 +178,14 @@ const Dashboard = () => {
         try {
             const res = await ContactService.acceptRequest(requestId);
             const chat = res.data;
-            setChats((prev) => (prev.some((c) => c.id === chat.id) ? prev : [...prev, chat]));
+            setChats((prev) => (prev.some((c) => c.id === chat.id) ? prev : [chat, ...prev]));
+            // Important: Load both so the "YOUR CONTACTS" list refreshes
             await loadContactsOnly();
             await loadRequests();
-        } catch {
-            alert('Could not accept request.');
+            alert('Contact added to Duo Space!');
+        } catch (e: any) {
+            const msg = e.response?.data?.message || 'Could not accept request.';
+            alert(msg);
         }
     };
 
@@ -221,8 +229,22 @@ const Dashboard = () => {
 
             stompClient.subscribe('/topic/announcements', (message) => {
                 const announcement = JSON.parse(message.body);
-                // In a real app, use a Toast system. For now, we use a custom alert.
                 alert(`📢 SYSTEM ANNOUNCEMENT:\n\n${announcement.content}`);
+            });
+
+            // Personal notifications topic (for background message delivery)
+            stompClient.subscribe(`/queue/user/${currentUser.id}/notifications`, (message) => {
+                const msg = JSON.parse(message.body);
+                if (activeChatRef.current?.id !== msg.chatId) {
+                    // Update chat list to show unread count or move to top
+                    setChats(prev => {
+                        const existing = prev.find(c => c.id === msg.chatId);
+                        if (existing) {
+                            return [existing, ...prev.filter(c => c.id !== msg.chatId)];
+                        }
+                        return prev;
+                    });
+                }
             });
         };
 
@@ -231,6 +253,7 @@ const Dashboard = () => {
         stompClient.activate();
         stompClientRef.current = stompClient;
     };
+
 
     const handleIncomingMessage = async (msg: any) => {
         if (msg.encrypted && msg.content) {
@@ -799,7 +822,7 @@ const Dashboard = () => {
                         Duo Space
                     </h2>
                     <div className="flex items-center space-x-2">
-                        {(currentUser.role === 'ROLE_ADMIN' || currentUser.role === 'ROLE_SUPER_ADMIN') && (
+                        {currentUser.role === 'ROLE_SUPER_ADMIN' && (
                             <button onClick={() => navigate("/admin")} className="text-[10px] md:text-xs font-bold px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white border border-rose-500/30 transition-all duration-200 uppercase tracking-widest">
                                 ADMIN
                             </button>
