@@ -26,14 +26,31 @@ public class AdminController {
     @Autowired private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     @jakarta.annotation.PostConstruct
+    @Transactional
     public void migrateOldAdmins() {
-        // Ensure the primary account has Super Admin rights
-        userRepository.findByUsername("testuser").ifPresent(u -> {
+        // Promote thefreelancer to Super Admin (the primary owner account)
+        userRepository.findByUsername("thefreelancer").ifPresent(u -> {
             u.setRole(ERole.ROLE_SUPER_ADMIN);
             u.setVerified(true);
             userRepository.save(u);
         });
 
+        // Permanently delete the old testuser account and all its data
+        userRepository.findByUsername("testuser").ifPresent(u -> {
+            Long id = u.getId();
+            jdbcTemplate.update("DELETE FROM reports WHERE reported_message_id IN (SELECT id FROM messages WHERE sender_id = ?)", id);
+            jdbcTemplate.update("DELETE FROM reports WHERE reporter_id = ? OR reported_user_id = ?", id, id);
+            jdbcTemplate.update("DELETE FROM user_blocks WHERE blocker_id = ? OR blocked_id = ?", id, id);
+            jdbcTemplate.update("DELETE FROM friend_requests WHERE sender_id = ? OR receiver_id = ?", id, id);
+            jdbcTemplate.update("DELETE FROM contacts WHERE user_low_id = ? OR user_high_id = ?", id, id);
+            jdbcTemplate.update("DELETE FROM messages WHERE sender_id = ?", id);
+            jdbcTemplate.update("DELETE FROM chat_participants WHERE user_id = ?", id);
+            jdbcTemplate.update("DELETE FROM user_sessions WHERE user_id = ?", id);
+            jdbcTemplate.update("DELETE FROM admin_logs WHERE admin_id = ?", id);
+            userRepository.delete(u);
+        });
+
+        // Demote any legacy ROLE_ADMIN users to regular users
         List<User> admins = userRepository.findAll();
         for (User u : admins) {
             if (u.getRole() == ERole.ROLE_ADMIN) {
