@@ -1,19 +1,16 @@
-import axios from 'axios';
-import authHeader from './auth-header';
-
-const API_URL = '/api/chats/';
+import api from '../api';
 
 class ChatService {
     getUserChats(userId: number) {
-        return axios.get(API_URL + 'user/' + userId, { headers: authHeader() });
+        return api.get(`/chats/user/${userId}`);
     }
 
     createChat(name: string, isGroup: boolean, participantIds: number[]) {
-        return axios.post(API_URL + 'create', {
+        return api.post('/chats/create', {
             name,
             isGroup,
             participantIds
-        }, { headers: authHeader() });
+        });
     }
 }
 

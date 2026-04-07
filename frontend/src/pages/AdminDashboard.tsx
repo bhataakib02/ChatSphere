@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api';
 import AuthService from '../services/auth.service';
 
 const AdminDashboard = () => {
@@ -17,16 +17,15 @@ const AdminDashboard = () => {
             navigate("/dashboard");
             return;
         }
-        fetchData(user.token);
+        fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- gate + load once on mount
     }, [navigate]);
 
-    const fetchData = async (token: string) => {
+    const fetchData = async () => {
         try {
-            const config = { headers: { Authorization: `Bearer ${token}` } };
             const [analyticsRes, usersRes] = await Promise.all([
-                axios.get('/api/admin/analytics', config),
-                axios.get('/api/admin/users', config)
+                api.get('/admin/analytics'),
+                api.get('/admin/users')
             ]);
             setAnalytics(analyticsRes.data);
             setUsers(usersRes.data);
@@ -40,10 +39,7 @@ const AdminDashboard = () => {
 
     const toggleLock = async (userId: number) => {
         try {
-            const token = AuthService.getCurrentUser().token;
-            await axios.put(`/api/admin/users/${userId}/toggle-lock`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await api.put(`/admin/users/${userId}/toggle-lock`, {});
             setUsers(users.map(u => u.id === userId ? { ...u, locked: !u.locked } : u));
         } catch {
             alert("Failed to toggle user status.");

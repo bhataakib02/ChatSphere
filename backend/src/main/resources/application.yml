@@ -14,8 +14,9 @@ spring:
       max-file-size: 10MB
       max-request-size: 12MB
 
+# Render/Heroku set PORT; SERVER_PORT still works for Docker Compose / manual runs.
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${PORT:${SERVER_PORT:8080}}
 
 jwt:
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}

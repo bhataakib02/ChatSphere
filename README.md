@@ -113,6 +113,7 @@ Open `http://localhost:5173`. Vite proxies `/api` and `/ws` to `http://localhost
 
 - Root **`vercel.json`** — installs/builds from `./frontend`, outputs `frontend/dist`, and **SPA rewrites** so React Router works.
 - **`frontend/vercel.json`** — same rewrites if you set the Vercel project **Root Directory** to `frontend` instead of the repo root.
+- **`render-env.example`** — template env vars for a Render **Web Service** (root `backend`, Docker). Render injects **`PORT`**; Spring binds to **`PORT`** first, then **`SERVER_PORT`**, then `8080` — you usually **do not** need to set `SERVER_PORT` on Render.
 
 **What you do**
 
@@ -162,6 +163,7 @@ Same as the Vercel table: set **`VITE_API_BASE_URL`** and **`VITE_WS_URL`** when
 | `JWT_SECRET` | Base64-encoded key for HS256; **`prod` requires** (no default) |
 | `CORS_ALLOWED_ORIGIN_PATTERNS` | Comma-separated origin patterns (no spaces), e.g. `https://app.example.com` |
 | `JWT_EXPIRATION_MS` | Optional token lifetime (default `86400000`) |
+| `PORT` / `SERVER_PORT` | HTTP listen port; **`PORT`** is set by Render; local default **`8080`** |
 
 Copy `env.example` as a checklist. For local Spring overrides without committing secrets, use `backend/src/main/resources/application-local.yml` (gitignored).
 

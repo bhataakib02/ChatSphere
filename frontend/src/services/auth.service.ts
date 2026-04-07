@@ -1,11 +1,9 @@
-import axios from 'axios';
-
-const API_URL = '/api/auth/';
+import api from '../api';
 
 class AuthService {
     login(username: string, password: string) {
-        return axios
-            .post(API_URL + 'login', {
+        return api
+            .post('/auth/login', {
                 username,
                 password
             })
@@ -22,7 +20,7 @@ class AuthService {
     }
 
     register(username: string, email: string, password: string) {
-        return axios.post(API_URL + 'register', {
+        return api.post('/auth/register', {
             username,
             email,
             password
