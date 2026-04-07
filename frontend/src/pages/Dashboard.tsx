@@ -18,7 +18,6 @@ const Dashboard = () => {
     const [messages, setMessages] = useState<any[]>([]);
     const [newMessage, setNewMessage] = useState("");
     const [isConnected, setIsConnected] = useState(false);
-    const [loading, setLoading] = useState(false);
 
     // UI elements
     const [showSidebar, setShowSidebar] = useState(true);
