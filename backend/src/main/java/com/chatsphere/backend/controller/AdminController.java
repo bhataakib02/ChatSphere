@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -23,6 +24,17 @@ public class AdminController {
     @Autowired private SystemSettingRepository systemSettingRepository;
     @Autowired private UserSessionRepository userSessionRepository;
     @Autowired private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+
+    @jakarta.annotation.PostConstruct
+    public void migrateOldAdmins() {
+        List<User> admins = userRepository.findAll();
+        for (User u : admins) {
+            if (u.getRole() == ERole.ROLE_ADMIN) {
+                u.setRole(ERole.ROLE_USER);
+                userRepository.save(u);
+            }
+        }
+    }
 
     @GetMapping("/users")
     public ResponseEntity<?> getAllUsersDetailed() {
@@ -201,11 +213,16 @@ public class AdminController {
     }
 
     @GetMapping("/reports")
-    public List<Report> getAllReports(@RequestParam(required = false) String status) {
-        if (status != null) {
-            return reportRepository.findByStatusOrderByCreatedAtDesc(Report.EReportStatus.valueOf(status.toUpperCase()));
+    public ResponseEntity<?> getAllReports(@RequestParam(required = false) String status) {
+        try {
+            if (status != null && !status.isEmpty()) {
+                Report.EReportStatus s = Report.EReportStatus.valueOf(status.trim().toUpperCase());
+                return ResponseEntity.ok(reportRepository.findByStatusOrderByCreatedAtDesc(s));
+            }
+            return ResponseEntity.ok(reportRepository.findAll());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Invalid report status"));
         }
-        return reportRepository.findAll();
     }
 
     @PutMapping("/reports/{id}")
@@ -234,17 +251,26 @@ public class AdminController {
     }
 
     @DeleteMapping("/chats/{id}")
+    @Transactional
     public ResponseEntity<?> deleteChat(@PathVariable Long id, org.springframework.security.core.Authentication auth) {
-        if (chatRepository.existsById(id)) {
-            chatRepository.deleteById(id);
+        return chatRepository.findById(id).map(chat -> {
+            // 1. Delete all messages in this chat
+            List<Message> messages = messageRepository.findByChat_IdOrderByCreatedAtAsc(id);
+            messageRepository.deleteAll(messages);
+            
+            // 2. Clear participants to break join table links
+            chat.setParticipants(new ArrayList<>());
+            chatRepository.save(chat);
+            
+            // 3. Delete the chat itself
+            chatRepository.delete(chat);
 
             UserDetailsImpl current = (UserDetailsImpl) auth.getPrincipal();
             User admin = userRepository.findById(current.getId()).orElse(null);
-            adminLogRepository.save(new AdminLog(admin, "DELETE_CHAT", "Disbanded chat group #" + id, id.toString()));
+            adminLogRepository.save(new AdminLog(admin, "DELETE_CHAT", "Disbanded and purged chat group #" + id, id.toString()));
 
             return ResponseEntity.ok(Collections.singletonMap("deleted", true));
-        }
-        return ResponseEntity.notFound().build();
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/messages/{id}")
