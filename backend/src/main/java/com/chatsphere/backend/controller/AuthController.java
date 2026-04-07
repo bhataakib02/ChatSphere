@@ -39,9 +39,6 @@ public class AuthController {
                 if (user.isLocked()) {
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new MessageResponse("Error: Your account has been banned."));
                 }
-                if (!user.isVerified()) {
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Error: Account not verified. Please check your email."));
-                }
             }
 
             Authentication authentication = authenticationManager.authenticate(
@@ -90,16 +87,11 @@ public class AuthController {
                 .fullName(signUpRequest.getFullName())
                 .role(ERole.ROLE_USER)
                 .online(false)
-                .isVerified(false)
+                .isVerified(true)
                 .build();
-        user.setVerificationCode(vCode);
         userRepository.save(user);
 
-        new Thread(() -> {
-            emailService.sendVerificationCode(user.getEmail(), vCode);
-        }).start();
-
-        return ResponseEntity.ok(new MessageResponse("Registration successful! Your code is: " + vCode));
+        return ResponseEntity.ok(new MessageResponse("Registration successful! You can now log in."));
     }
 
     @PostMapping("/verify")

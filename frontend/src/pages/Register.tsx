@@ -16,6 +16,22 @@ const Register = () => {
     const [strength, setStrength] = useState({ score: 0, label: "Weak", color: "bg-gray-300" });
     const [showPassword, setShowPassword] = useState(false);
 
+    // CAPTCHA State
+    const [captcha, setCaptcha] = useState({ a: 0, b: 0 });
+    const [captchaAnswer, setCaptchaAnswer] = useState("");
+
+    const generateCaptcha = () => {
+        setCaptcha({
+            a: Math.floor(Math.random() * 10) + 1,
+            b: Math.floor(Math.random() * 10) + 1
+        });
+        setCaptchaAnswer("");
+    };
+
+    useEffect(() => {
+        generateCaptcha();
+    }, []);
+
     useEffect(() => {
         // Auto-suggest username from full name
         if (fullName && !username) {
@@ -50,6 +66,20 @@ const Register = () => {
 
     const handleRegister = (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (parseInt(captchaAnswer) !== (captcha.a + captcha.b)) {
+            showNotification("Incorrect CAPTCHA! Are you a robot?", "error");
+            generateCaptcha();
+            return;
+        }
+
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(email)) {
+            showNotification("Please provide a strictly valid email address format.", "error");
+            generateCaptcha();
+            return;
+        }
+
         if (!agreed) {
             showNotification("You must agree to the Terms and Conditions.", "error");
             return;
@@ -66,14 +96,15 @@ const Register = () => {
             (response) => {
                 showNotification(response.data.message || "Registration successful!", "success");
                 setSuccessful(true);
-                // Redirect to verify after a short delay
-                setTimeout(() => navigate("/verify", { state: { username, email } }), 2000);
+                // Redirect straight to login, bypassing unused OTP verify flow
+                setTimeout(() => navigate("/login"), 2000);
             },
             (error) => {
                 const resMessage = (error.response?.data?.message) || error.message || error.toString();
                 showNotification(resMessage, "error");
                 setSuccessful(false);
                 setLoading(false);
+                generateCaptcha();
             }
         );
     };
@@ -144,17 +175,29 @@ const Register = () => {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Anti-Robot CAPTCHA Row */}
+                                <div className="md:col-span-2 pt-2">
+                                    <div className="flex items-center space-x-3 bg-white/40 border border-white/60 p-2 rounded-2xl">
+                                        <div className="flex-shrink-0 bg-primary-100 text-primary-500 font-extrabold text-lg px-4 py-3 rounded-xl shadow-inner tracking-widest whitespace-nowrap">
+                                            {captcha.a} + {captcha.b} =
+                                        </div>
+                                        <input type="number" required placeholder="?" className="w-full bg-white/80 border border-white/40 rounded-xl px-5 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-[#ff4d6d]/10 focus:border-[#ff4d6d] transition-all font-bold text-center text-lg"
+                                            value={captchaAnswer} onChange={e => setCaptchaAnswer(e.target.value)} />
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest text-center mt-2">Anti-Bot Verification</p>
+                                </div>
                             </div>
 
                             {/* Terms */}
-                            <label className="flex items-center space-x-3 cursor-pointer group px-2">
-                                <input type="checkbox" className="w-5 h-5 rounded border-white shadow-sm text-[#ff4d6d] focus:ring-[#ff4d6d]" 
+                            <label className="flex items-center space-x-3 cursor-pointer group px-2 pt-2">
+                                <input type="checkbox" className="w-5 h-5 rounded border-white shadow-sm text-[#ff4d6d] focus:ring-[#ff4d6d]"
                                     checked={agreed} onChange={e => setAgreed(e.target.checked)} />
                                 <span className="text-xs text-gray-600 font-medium group-hover:text-gray-800 transition-colors">I agree to the <span className="text-[#ff4d6d] font-bold">Terms & Conditions</span> and Privacy Policy.</span>
                             </label>
 
                             <button type="submit" disabled={loading}
-                                className="w-full bg-gradient-to-r from-[#ff4d6d] to-[#ff85a1] hover:scale-[1.02] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#ff4d6d]/20 transition-all active:scale-[0.98] disabled:opacity-70 text-lg uppercase tracking-widest">
+                                className="w-full bg-gradient-to-r from-[#ff4d6d] to-[#ff85a1] hover:scale-[1.02] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#ff4d6d]/20 transition-all active:scale-[0.98] disabled:opacity-70 text-lg uppercase tracking-widest mt-2">
                                 {loading ? "Establishing Duo Connection..." : "Create Duo Account"}
                             </button>
                         </form>
@@ -167,7 +210,7 @@ const Register = () => {
                             </div>
                             <div className="space-y-2">
                                 <h3 className="text-2xl font-black text-gray-800 italic">Welcome Aboard!</h3>
-                                <p className="text-gray-600 text-sm font-medium px-4">Redirecting to verification... Please check your email for the secret code.</p>
+                                <p className="text-gray-600 text-sm font-medium px-4">Account verified via Anti-Bot protocol. Redirecting to your Duo interface to sign in...</p>
                             </div>
                         </div>
                     )}
