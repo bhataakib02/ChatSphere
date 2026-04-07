@@ -58,13 +58,28 @@ public class AuthController {
         }
     }
 
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @jakarta.annotation.PostConstruct
+    public void dropEmailConstraint() {
+        try {
+            jdbcTemplate.execute("DO $$ DECLARE constraint_name text; BEGIN " +
+                "SELECT tc.constraint_name INTO constraint_name " +
+                "FROM information_schema.table_constraints tc " +
+                "JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_name) " +
+                "WHERE tc.constraint_type = 'UNIQUE' AND tc.table_name = 'users' AND ccu.column_name = 'email'; " +
+                "IF constraint_name IS NOT NULL THEN " +
+                "EXECUTE 'ALTER TABLE users DROP CONSTRAINT ' || constraint_name; " +
+                "END IF; END $$;");
+        } catch (Exception e) {
+            // Log or ignore if executed on an unsupported dialect
+        }
+    }
+
     @PostMapping("/register")
     public ResponseEntity<?> registerUser(@RequestBody RegisterRequest signUpRequest) {
         if (userRepository.existsByUsername(signUpRequest.getUsername())) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Username is already taken!"));
-        }
-        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
         }
 
         String vCode = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
@@ -80,9 +95,11 @@ public class AuthController {
         user.setVerificationCode(vCode);
         userRepository.save(user);
 
-        emailService.sendVerificationCode(user.getEmail(), vCode);
+        new Thread(() -> {
+            emailService.sendVerificationCode(user.getEmail(), vCode);
+        }).start();
 
-        return ResponseEntity.ok(new MessageResponse("Registration successful! Please check your email for verification code."));
+        return ResponseEntity.ok(new MessageResponse("Registration successful! Your code is: " + vCode));
     }
 
     @PostMapping("/verify")
