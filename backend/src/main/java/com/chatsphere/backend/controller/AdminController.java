@@ -41,6 +41,20 @@ public class AdminController {
                 userRepository.save(u);
             }
         }
+
+        // Seed default system settings if they don't already exist
+        java.util.List<SystemSetting> defaults = java.util.Arrays.asList(
+            new SystemSetting("MAINTENANCE_MODE", "false", "Disable all user access for maintenance."),
+            new SystemSetting("REGISTRATION_ENABLED", "true", "Allow new users to create accounts."),
+            new SystemSetting("CHAT_ENABLED", "true", "Global system toggle"),
+            new SystemSetting("MEDIA_ENABLED", "true", "Global system toggle"),
+            new SystemSetting("GROUPS_ENABLED", "true", "Global system toggle")
+        );
+        for (SystemSetting s : defaults) {
+            if (!systemSettingRepository.existsById(s.getSettingKey())) {
+                systemSettingRepository.save(s);
+            }
+        }
     }
 
     @GetMapping("/users")
