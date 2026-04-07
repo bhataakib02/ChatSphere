@@ -33,6 +33,7 @@ public class User {
     private String password;
 
     private String fullName;
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean isVerified = false;
     private String verificationCode;
     private String resetPasswordCode;
@@ -46,6 +47,7 @@ public class User {
     private String publicKey;
 
     private LocalDateTime lastSeen;
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean online;
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -53,6 +55,7 @@ public class User {
     @Column(length = 20)
     private ERole role;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean locked = false;
 
     public User() {}
