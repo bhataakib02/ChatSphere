@@ -5,11 +5,11 @@ spring:
     hibernate:
       ddl-auto: update
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/chatsphere}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: ${DB_URL:jdbc:postgresql://chatsphere-db-retailapp02.a.aivencloud.com:13259/defaultdb?sslmode=require}
+    username: ${DB_USER:avnadmin}
+    password: ${DB_PASSWORD:}
     hikari:
-      maximum-pool-size: 10
+      maximum-pool-size: 5
 
 jwt:
   # Dev-only default (Base64, 256+ bits when decoded). Override with JWT_SECRET in any shared environment.
