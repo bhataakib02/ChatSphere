@@ -76,6 +76,8 @@ public class User {
     public void setRole(ERole role) { this.role = role; }
     public boolean isLocked() { return locked; }
     public void setLocked(boolean locked) { this.locked = locked; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public static UserBuilder builder() { return new UserBuilder(); }
 
@@ -86,6 +88,7 @@ public class User {
         private ERole role;
         private boolean online;
         private boolean locked = false;
+        private LocalDateTime createdAt;
 
         public UserBuilder username(String v) { this.username = v; return this; }
         public UserBuilder email(String v) { this.email = v; return this; }
@@ -93,6 +96,7 @@ public class User {
         public UserBuilder role(ERole v) { this.role = v; return this; }
         public UserBuilder online(boolean v) { this.online = v; return this; }
         public UserBuilder locked(boolean v) { this.locked = v; return this; }
+        public UserBuilder createdAt(LocalDateTime v) { this.createdAt = v; return this; }
 
         public User build() {
             User u = new User();
@@ -102,6 +106,7 @@ public class User {
             u.setRole(role);
             u.setOnline(online);
             u.setLocked(locked);
+            if (createdAt != null) u.setCreatedAt(createdAt);
             return u;
         }
     }
