@@ -15,7 +15,7 @@ public interface ContactRepository extends JpaRepository<Contact, Long> {
     @Query("SELECT c FROM Contact c WHERE c.userLow.id = :low AND c.userHigh.id = :high")
     Optional<Contact> findByOrderedPair(@Param("low") long low, @Param("high") long high);
 
-    @Query("SELECT c FROM Contact c WHERE c.userLow.id = :uid OR c.userHigh.id = :uid")
+    @Query("SELECT c FROM Contact c JOIN FETCH c.userLow JOIN FETCH c.userHigh WHERE c.userLow.id = :uid OR c.userHigh.id = :uid")
     List<Contact> findAllInvolvingUser(@Param("uid") Long uid);
 
     default boolean areContacts(long userIdA, long userIdB) {
