@@ -206,7 +206,7 @@ public class AdminController {
             map.put("receiver", fr.getReceiver().getUsername());
             map.put("status", fr.getStatus().name());
             map.put("createdAt", fr.getCreatedAt());
-            map.put("risk", fr.getStatus() == com.chatsphere.backend.model.FriendRequest.ERequestStatus.PENDING ? "HIGH" : "NONE");
+            map.put("risk", fr.getStatus() == EFriendRequestStatus.PENDING ? "HIGH" : "NONE");
             return map;
         }).sorted((a, b) -> ((LocalDateTime)b.get("createdAt")).compareTo((LocalDateTime)a.get("createdAt")))
         .collect(java.util.stream.Collectors.toList());
