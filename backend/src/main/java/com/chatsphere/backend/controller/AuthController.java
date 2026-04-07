@@ -4,9 +4,11 @@ import com.chatsphere.backend.dto.*;
 import com.chatsphere.backend.model.ERole;
 import com.chatsphere.backend.model.User;
 import com.chatsphere.backend.repository.UserRepository;
+import com.chatsphere.backend.repository.UserSessionRepository;
 import com.chatsphere.backend.security.JwtUtils;
 import com.chatsphere.backend.security.UserDetailsImpl;
 import com.chatsphere.backend.service.EmailService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,12 +29,13 @@ import java.util.UUID;
 public class AuthController {
     @Autowired private AuthenticationManager authenticationManager;
     @Autowired private UserRepository userRepository;
+    @Autowired private UserSessionRepository userSessionRepository;
     @Autowired private PasswordEncoder encoder;
     @Autowired private JwtUtils jwtUtils;
     @Autowired private EmailService emailService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         try {
             User user = userRepository.findByUsername(loginRequest.getUsername()).orElse(null);
             if (user != null) {
@@ -47,6 +50,19 @@ public class AuthController {
             String jwt = jwtUtils.generateJwtToken(authentication);
             UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
             String role = userDetails.getAuthorities().stream().findFirst().map(a -> a.getAuthority()).orElse("");
+
+            // Record the login session so it appears in the admin Active Sessions panel
+            userRepository.findById(userDetails.getId()).ifPresent(loggedUser -> {
+                com.chatsphere.backend.model.UserSession session = new com.chatsphere.backend.model.UserSession();
+                session.setUser(loggedUser);
+                session.setToken(jwt);
+                session.setDevice(request.getHeader("User-Agent") != null ? request.getHeader("User-Agent").substring(0, Math.min(120, request.getHeader("User-Agent").length())) : "Unknown");
+                session.setLocation(request.getRemoteAddr());
+                session.setLoginTime(java.time.LocalDateTime.now());
+                session.setActive(true);
+                userSessionRepository.save(session);
+            });
+
             return ResponseEntity.ok(new JwtResponse(jwt, userDetails.getId(), userDetails.getUsername(), userDetails.getEmail(), role));
         } catch (BadCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Error: Invalid username or password."));
