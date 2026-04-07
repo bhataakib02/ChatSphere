@@ -32,9 +32,9 @@ public class AutoModService {
 
     private void autoFlag(Message message, String reason) {
         Report report = new Report();
-        report.setReporterId(0L); // 0 = SYSTEM
-        report.setReportedUserId(message.getSender().getId());
-        report.setMessageContent(message.getContent());
+        report.setReporter(null); // SYSTEM
+        report.setReportedUser(message.getSender());
+        report.setReportedMessage(message);
         report.setReason(reason);
         report.setStatus(Report.EReportStatus.PENDING);
         reportRepository.save(report);

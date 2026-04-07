@@ -240,7 +240,7 @@ public class AdminController {
             map.put("sender", m.getSender().getUsername());
             map.put("chatId", m.getChat().getId());
             map.put("createdAt", m.getCreatedAt());
-            map.put("type", m.getType().name());
+            map.put("type", m.getType());
             result.add(map);
         }
         Collections.sort(result, (a, b) -> ((LocalDateTime)b.get("createdAt")).compareTo((LocalDateTime)a.get("createdAt")));
@@ -250,11 +250,11 @@ public class AdminController {
     @GetMapping("/media")
     public List<Map<String, Object>> getGlobalMedia() {
         return messageRepository.findAll().stream()
-                .filter(m -> m.getType() != Message.EMessageType.TEXT)
+                .filter(m -> !"TEXT".equals(m.getType()))
                 .map(m -> {
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", m.getId());
-                    map.put("type", m.getType().name());
+                    map.put("type", m.getType());
                     map.put("sender", m.getSender().getUsername());
                     map.put("createdAt", m.getCreatedAt());
                     map.put("url", m.getContent());
@@ -268,7 +268,7 @@ public class AdminController {
     public ResponseEntity<?> getGroupMembers(@PathVariable Long id) {
         return chatRepository.findById(id).map(chat -> {
             List<Map<String, Object>> members = new ArrayList<>();
-            for (User u : chat.getMembers()) {
+            for (User u : chat.getParticipants()) {
                 Map<String, Object> m = new HashMap<>();
                 m.put("id", u.getId());
                 m.put("username", u.getUsername());

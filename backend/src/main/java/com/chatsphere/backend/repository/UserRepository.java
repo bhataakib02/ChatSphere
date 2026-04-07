@@ -18,6 +18,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Boolean existsByEmail(String email);
 
     long countByOnlineTrue();
+    long countByRole(com.chatsphere.backend.model.ERole role);
 
     @Query("SELECT u FROM User u WHERE u.id <> :excludeId AND (LOWER(u.username) LIKE LOWER(CONCAT('%', :q, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%')))")
     List<User> searchByUsernameOrEmailExcluding(@Param("q") String q, @Param("excludeId") Long excludeId, Pageable pageable);
