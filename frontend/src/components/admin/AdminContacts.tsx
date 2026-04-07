@@ -10,23 +10,31 @@ export const AdminContacts = () => {
 
     const fetchRequests = async () => {
         try {
-            // Simulated endpoint for now, will implement on backend
             const res = await api.get('/admin/contacts');
-            setRequests(res.data);
+            setRequests(res.data || []);
         } catch {
             console.error("Failed to fetch contact requests");
-            // Placeholder data for demo
-            setRequests([
-                { id: 1, sender: "SpammerBot", receiver: "Aakib", status: "PENDING", createdAt: new Date().toISOString(), risk: "HIGH" },
-                { id: 2, sender: "NormalUser", receiver: "Alice", status: "ACCEPTED", createdAt: new Date().toISOString(), risk: "NONE" }
-            ]);
         }
     };
 
     return (
         <div className="relative z-10 animate-fade-in-up">
-            <h1 className="text-3xl font-extrabold text-white mb-2">Contact Audit</h1>
-            <p className="text-duo-lavenderMuted text-sm mb-8">Monitor global connection requests and eliminate spam networks.</p>
+            <div className="flex justify-between items-end mb-8">
+                <div>
+                    <h1 className="text-3xl font-extrabold text-white mb-2">Contact Audit</h1>
+                    <p className="text-duo-lavenderMuted text-sm">Monitor global connection requests and eliminate spam networks.</p>
+                </div>
+                {requests.length > 0 && (
+                    <button onClick={async () => {
+                        if (window.confirm('Wipe all connection and friend request data?')) {
+                            await api.delete('/admin/cleanup?type=ALL_CONTACTS');
+                            fetchRequests();
+                        }
+                    }} className="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500 hover:text-white px-4 py-2 rounded-xl text-xs font-black tracking-widest uppercase transition-all shadow-lg scale-95 hover:scale-100">
+                        Clear All Connections
+                    </button>
+                )}
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {requests.map((r) => (

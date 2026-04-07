@@ -36,9 +36,21 @@ export const AdminSessions = () => {
 
     return (
         <div className="relative z-10 animate-fade-in-up">
-            <div className="mb-8">
-                <h1 className="text-3xl font-extrabold text-white mb-2">Active Sessions</h1>
-                <p className="text-duo-lavenderMuted text-sm">Monitor and secure user access across all devices.</p>
+            <div className="flex justify-between items-end mb-8">
+                <div>
+                    <h1 className="text-3xl font-extrabold text-white mb-2">Active Sessions</h1>
+                    <p className="text-duo-lavenderMuted text-sm">Monitor and secure user access across all devices.</p>
+                </div>
+                {sessions.length > 0 && (
+                    <button onClick={async () => {
+                        if (window.confirm('Terminate ALL active sessions? Users will be logged out.')) {
+                            await api.delete('/admin/cleanup?type=ALL_SESSIONS');
+                            fetchSessions();
+                        }
+                    }} className="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500 hover:text-white px-4 py-2 rounded-xl text-xs font-black tracking-widest uppercase transition-all shadow-lg scale-95 hover:scale-100">
+                        Terminate All
+                    </button>
+                )}
             </div>
 
             <div className="bg-white/5 rounded-2xl border border-white/10 backdrop-blur shadow-xl overflow-hidden">

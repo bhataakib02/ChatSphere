@@ -195,20 +195,21 @@ public class AdminController {
         return data;
     }
 
+    @Autowired private FriendRequestRepository friendRequestRepository;
+
     @GetMapping("/contacts")
     public List<Map<String, Object>> getAllContactRequests() {
-        // Implementation for Point 4: Request Management
-        List<Map<String, Object>> requests = new ArrayList<>();
-        // In a real app, query a ContactRequest repository. Mocking for comprehensive admin view.
-        Map<String, Object> r1 = new HashMap<>();
-        r1.put("id", 1);
-        r1.put("sender", "SpammerBot");
-        r1.put("receiver", "User123");
-        r1.put("status", "PENDING");
-        r1.put("createdAt", LocalDateTime.now().minusHours(2));
-        r1.put("risk", "HIGH");
-        requests.add(r1);
-        return requests;
+        return friendRequestRepository.findAll().stream().map(fr -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", fr.getId());
+            map.put("sender", fr.getSender().getUsername());
+            map.put("receiver", fr.getReceiver().getUsername());
+            map.put("status", fr.getStatus().name());
+            map.put("createdAt", fr.getCreatedAt());
+            map.put("risk", fr.getStatus() == com.chatsphere.backend.model.FriendRequest.ERequestStatus.PENDING ? "HIGH" : "NONE");
+            return map;
+        }).sorted((a, b) -> ((LocalDateTime)b.get("createdAt")).compareTo((LocalDateTime)a.get("createdAt")))
+        .collect(java.util.stream.Collectors.toList());
     }
 
     @GetMapping("/health")
@@ -226,14 +227,28 @@ public class AdminController {
 
     @DeleteMapping("/cleanup")
     @org.springframework.security.access.prepost.PreAuthorize("hasRole('SUPER_ADMIN')")
-    public ResponseEntity<?> performCleanup(@RequestParam String type) {
-        // Implementation for Point 20: Data Management
-        if ("MESSAGES".equals(type)) {
-            // Logic to delete messages older than 30 days
-            return ResponseEntity.ok(Collections.singletonMap("message", "Old messages purged."));
-        } else if ("INACTIVE_USERS".equals(type)) {
-            // Logic to delete users inactive for 1 year
-            return ResponseEntity.ok(Collections.singletonMap("message", "Inactive users removed."));
+    @Transactional
+    public ResponseEntity<?> performCleanup(@RequestParam String type, org.springframework.security.core.Authentication auth) {
+        UserDetailsImpl current = (UserDetailsImpl) auth.getPrincipal();
+        User admin = userRepository.findById(current.getId()).orElse(null);
+
+        if ("ALL_LOGS".equals(type)) {
+            adminLogRepository.deleteAll();
+            adminLogRepository.save(new AdminLog(admin, "CLEAR_LOGS", "Cleared all system logs.", "SYSTEM"));
+            return ResponseEntity.ok(Collections.singletonMap("message", "All audit logs purged."));
+        } else if ("ALL_MEDIA".equals(type)) {
+            jdbcTemplate.update("DELETE FROM messages WHERE type != 'TEXT'");
+            adminLogRepository.save(new AdminLog(admin, "CLEAR_MEDIA", "Cleared all media files.", "SYSTEM"));
+            return ResponseEntity.ok(Collections.singletonMap("message", "All media purged."));
+        } else if ("ALL_SESSIONS".equals(type)) {
+            jdbcTemplate.update("DELETE FROM user_sessions");
+            adminLogRepository.save(new AdminLog(admin, "CLEAR_SESSIONS", "Terminated all active sessions.", "SYSTEM"));
+            return ResponseEntity.ok(Collections.singletonMap("message", "All active sessions terminated."));
+        } else if ("ALL_CONTACTS".equals(type)) {
+            jdbcTemplate.update("DELETE FROM friend_requests");
+            jdbcTemplate.update("DELETE FROM contacts");
+            adminLogRepository.save(new AdminLog(admin, "CLEAR_CONTACTS", "Deleted all connection history.", "SYSTEM"));
+            return ResponseEntity.ok(Collections.singletonMap("message", "All contact data purged."));
         }
         return ResponseEntity.badRequest().build();
     }

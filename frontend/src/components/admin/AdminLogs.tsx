@@ -38,8 +38,22 @@ export const AdminLogs = () => {
 
     return (
         <div className="relative z-10 animate-fade-in-up">
-            <h1 className="text-3xl font-extrabold text-white mb-2">Audit Logs</h1>
-            <p className="text-duo-lavenderMuted mb-8">System-wide record of every administrative action for accountability.</p>
+            <div className="flex justify-between items-end mb-8">
+                <div>
+                    <h1 className="text-3xl font-extrabold text-white mb-2">Audit Logs</h1>
+                    <p className="text-duo-lavenderMuted">System-wide record of every administrative action for accountability.</p>
+                </div>
+                {logs.length > 0 && (
+                    <button onClick={async () => {
+                        if (window.confirm('Delete all audit logs?')) {
+                            await api.delete('/admin/cleanup?type=ALL_LOGS');
+                            fetchLogs();
+                        }
+                    }} className="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500 hover:text-white px-4 py-2 rounded-xl text-xs font-black tracking-widest uppercase transition-all shadow-lg scale-95 hover:scale-100">
+                        Clear All Logs
+                    </button>
+                )}
+            </div>
 
             {loading ? (
                 <div className="py-20 text-center animate-pulse">Accessing archives...</div>
