@@ -171,7 +171,7 @@ const Dashboard = () => {
             await loadRequests();
         } catch (e: any) {
             const msg = e.response?.data?.message || e.response?.data?.error || 'Could not send request.';
-            alert(typeof msg === 'string' ? msg : 'Could not send request.');
+            showNotification(typeof msg === 'string' ? msg : 'Could not send request.', 'error');
         }
     };
 
@@ -183,18 +183,29 @@ const Dashboard = () => {
             // Important: Load both so the "YOUR CONTACTS" list refreshes
             await loadContactsOnly();
             await loadRequests();
-            alert('Contact added to Duo Space!');
+            showNotification('Contact added to Duo Space!', 'success');
         } catch (e: any) {
             const msg = e.response?.data?.message || 'Action failed.';
             showNotification(msg, 'error');
         }
+    };
+
+    const handleRejectRequest = async (requestId: number) => {
+        try {
+            await ContactService.rejectRequest(requestId);
+            await loadRequests();
+            showNotification("Request rejected", "info");
+        } catch {
+            showNotification("Could not reject request", "error");
+        }
+    };
 
     const handleCancelOutgoing = async (requestId: number) => {
         try {
             await ContactService.cancelRequest(requestId);
             await loadRequests();
         } catch {
-            alert('Could not cancel request.');
+            showNotification('Could not cancel request.', 'error');
         }
     };
 
@@ -365,7 +376,7 @@ const Dashboard = () => {
 
     const handleCreateGroup = async () => {
         if (!groupName.trim() || selectedUsers.length === 0) {
-            alert("Please provide a group name and select at least one member.");
+            showNotification("Please provide a group name and select at least one member.", "info");
             return;
         }
 
@@ -383,7 +394,7 @@ const Dashboard = () => {
             setGroupName("");
             setSelectedUsers([]);
         } catch {
-            alert("Failed to create group.");
+            showNotification("Failed to create group.", "error");
         } finally {
             setIsCreatingGroup(false);
         }
@@ -563,7 +574,7 @@ const Dashboard = () => {
                         body: JSON.stringify(chatMessage),
                     });
                 } catch {
-                    alert("Voice message failed.");
+                    showNotification("Voice message failed.", "error");
                 } finally {
                     setIsUploading(false);
                 }
@@ -579,7 +590,7 @@ const Dashboard = () => {
 
         } catch (error) {
             console.error(error);
-            alert("Microphone permission denied.");
+            showNotification("Microphone permission denied.", "error");
         }
     };
 
