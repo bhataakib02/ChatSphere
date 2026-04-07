@@ -54,45 +54,51 @@ export const AdminSettings = () => {
         setSettings(settings.map(s => s.settingKey === key ? { ...s, settingValue: value } : s));
     };
 
+    const renderToggle = (key: string, label: string) => {
+        const setting = settings.find(s => s.settingKey === key);
+        const isActive = setting?.settingValue === "true";
+
+        return (
+            <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:border-primary-500/30 transition-all">
+                <div>
+                    <div className="text-sm font-bold text-white">{label}</div>
+                    <div className="text-[10px] text-duo-lavenderMuted italic">{setting?.description || 'Global system toggle'}</div>
+                </div>
+                <button
+                    onClick={() => updateSettingValue(key, isActive ? "false" : "true")}
+                    className={`w-12 h-6 rounded-full transition-all relative ${isActive ? 'bg-primary-500 shadow-lg shadow-primary-500/30' : 'bg-white/10'}`}
+                >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${isActive ? 'right-1' : 'left-1'}`}></div>
+                </button>
+            </div>
+        );
+    };
+
     return (
         <div className="relative z-10 animate-fade-in-up">
             <h1 className="text-3xl font-extrabold text-white mb-2">System Control</h1>
-            <p className="text-duo-lavenderMuted mb-10">Configure global app behaviors and broadcast urgent alerts.</p>
+            <p className="text-duo-lavenderMuted text-sm mb-10">Configure global platform behavior and critical safety toggles.</p>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                {/* Global Settings */}
                 <div className="bg-white/5 rounded-2xl border border-white/10 p-8 backdrop-blur shadow-xl">
                     <h3 className="text-lg font-bold text-white mb-6 flex items-center">
                         <svg className="w-5 h-5 mr-2 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        App Configuration
+                        Feature Control
                     </h3>
 
-                    <div className="space-y-6 mb-8">
-                        {settings.map((s) => (
-                            <div key={s.settingKey} className="group">
-                                <div className="flex justify-between items-center mb-1">
-                                    <label className="text-xs font-black text-duo-lavenderMuted uppercase tracking-widest">{s.settingKey.replace('_', ' ')}</label>
-                                    <div className="flex bg-black/40 rounded-lg p-1 border border-white/5">
-                                        <button
-                                            onClick={() => updateSettingValue(s.settingKey, 'true')}
-                                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${s.settingValue === 'true' ? 'bg-primary-500 text-white' : 'text-duo-lavenderMuted hover:text-white'}`}
-                                        >ON</button>
-                                        <button
-                                            onClick={() => updateSettingValue(s.settingKey, 'false')}
-                                            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${s.settingValue === 'false' ? 'bg-white/10 text-white' : 'text-duo-lavenderMuted hover:text-white'}`}
-                                        >OFF</button>
-                                    </div>
-                                </div>
-                                <p className="text-[10px] text-duo-mist/60 italic">{s.description}</p>
-                            </div>
-                        ))}
+                    <div className="space-y-4 mb-8">
+                        {renderToggle("MAINTENANCE_MODE", "Maintenance Mode")}
+                        {renderToggle("REGISTRATION_ENABLED", "User Registration")}
+                        {renderToggle("CHAT_ENABLED", "Messaging Services")}
+                        {renderToggle("MEDIA_ENABLED", "Media Uploads")}
+                        {renderToggle("GROUPS_ENABLED", "Public Groups")}
                     </div>
 
                     <button
                         onClick={saveSettings}
                         className="w-full bg-primary-500 hover:bg-primary-400 text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary-500/20 active:scale-95"
                     >
-                        Save Configuration
+                        Save All Changes
                     </button>
                 </div>
 

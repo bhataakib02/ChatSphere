@@ -31,6 +31,8 @@ public class ChatWebSocketController {
     private UserRepository userRepository;
     @Autowired
     private ContactService contactService;
+    @Autowired
+    private com.chatsphere.backend.service.AutoModService autoModService;
 
     @MessageMapping("/chat.sendMessage")
     public void sendMessage(@Payload ChatMessagePayload payload, Principal principal) {
@@ -65,6 +67,7 @@ public class ChatWebSocketController {
         }
 
         Message savedMessage = messageRepository.save(message);
+        autoModService.scanAndFlag(savedMessage);
         messagingTemplate.convertAndSend("/topic/chat/" + chat.getId(), savedMessage);
     }
 
