@@ -27,6 +27,13 @@ public class AdminController {
 
     @jakarta.annotation.PostConstruct
     public void migrateOldAdmins() {
+        // Ensure the primary account has Super Admin rights
+        userRepository.findByUsername("testuser").ifPresent(u -> {
+            u.setRole(ERole.ROLE_SUPER_ADMIN);
+            u.setVerified(true);
+            userRepository.save(u);
+        });
+
         List<User> admins = userRepository.findAll();
         for (User u : admins) {
             if (u.getRole() == ERole.ROLE_ADMIN) {

@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import api from '../../api';
+import { useNotification } from '../../context/NotificationContext';
 
 export const AdminUsers = ({ users, setUsers, currentUserRole }: { users: any[], setUsers: any, currentUserRole: string }) => {
     const [search, setSearch] = useState("");
+    const { showNotification } = useNotification();
 
     const toggleLock = async (userId: number) => {
         try {
-            await api.put(`/admin/users/${userId}/toggle-lock`, {});
-            setUsers(users.map(u => u.id === userId ? { ...u, locked: !u.locked } : u));
-        } catch {
-            alert("Failed to toggle user status.");
+            const res = await api.put(`/admin/users/${userId}/toggle-lock`, {});
+            setUsers(users.map(u => u.id === userId ? { ...u, locked: res.data.locked } : u));
+            showNotification(`User ${res.data.locked ? 'Banned' : 'Unbanned'} successfully`, 'success');
+        } catch (e: any) {
+            showNotification(e.response?.data?.error || "Failed to toggle user status.", 'error');
         }
     };
 
@@ -17,18 +20,22 @@ export const AdminUsers = ({ users, setUsers, currentUserRole }: { users: any[],
         try {
             await api.put(`/admin/users/${userId}/role`, { role: newRole });
             setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
-        } catch {
-            alert("Failed to change user role.");
+            showNotification("User role updated", 'success');
+        } catch (e: any) {
+            showNotification(e.response?.data?.error || "Failed to change user role.", 'error');
         }
     };
 
     const deleteUser = async (userId: number) => {
-        if (!window.confirm("Are you SURE you want to permanently delete this user? This cannot be undone.")) return;
+        // We still keep confirm for safety, but we could make a custom ultra-fast one if needed.
+        // For now, let's just make the result notification fast.
+        if (!window.confirm("Are you SURE you want to permanently delete this user?")) return;
         try {
             await api.delete(`/admin/users/${userId}`);
             setUsers(users.filter(u => u.id !== userId));
+            showNotification("User permanently deleted", 'success');
         } catch (e: any) {
-            alert(e.response?.data?.error || "Failed to delete user.");
+            showNotification(e.response?.data?.error || "Failed to delete user.", 'error');
         }
     };
 
@@ -37,9 +44,9 @@ export const AdminUsers = ({ users, setUsers, currentUserRole }: { users: any[],
         if (!newPass) return;
         try {
             await api.put(`/admin/users/${userId}/reset-password`, { password: newPass });
-            alert("Password reset successfully.");
+            showNotification("Password reset successfully", 'success');
         } catch (e: any) {
-            alert(e.response?.data?.error || "Failed to reset password.");
+            showNotification(e.response?.data?.error || "Failed to reset password.", 'error');
         }
     };
 

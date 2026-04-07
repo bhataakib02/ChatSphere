@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import api from '../../api';
+import { useNotification } from '../../context/NotificationContext';
 
 export const AdminSessions = () => {
     const [sessions, setSessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { showNotification } = useNotification();
 
     useEffect(() => {
         fetchSessions();
@@ -15,7 +17,7 @@ export const AdminSessions = () => {
             const res = await api.get('/admin/sessions');
             setSessions(res.data);
         } catch {
-            console.error("Failed to fetch sessions");
+            showNotification("Failed to fetch sessions", "error");
         } finally {
             setLoading(false);
         }
@@ -26,8 +28,9 @@ export const AdminSessions = () => {
         try {
             await api.delete(`/admin/sessions/${id}`);
             setSessions(sessions.filter(s => s.id !== id));
+            showNotification("Session terminated successfully", "success");
         } catch {
-            alert("Failed to terminate session.");
+            showNotification("Failed to terminate session.", "error");
         }
     };
 

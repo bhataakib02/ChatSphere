@@ -2,9 +2,12 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './style.css'
+import { NotificationProvider } from './context/NotificationContext.tsx'
 
 createRoot(document.getElementById('app')!).render(
     <StrictMode>
-        <App />
+        <NotificationProvider>
+            <App />
+        </NotificationProvider>
     </StrictMode>,
 )

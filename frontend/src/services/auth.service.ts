@@ -19,12 +19,25 @@ class AuthService {
         localStorage.removeItem('user');
     }
 
-    register(username: string, email: string, password: string) {
+    register(username: string, email: string, password: string, fullName: string) {
         return api.post('/auth/register', {
             username,
             email,
-            password
+            password,
+            fullName
         });
+    }
+
+    verify(username: string, code: string) {
+        return api.post('/auth/verify', { username, code });
+    }
+
+    forgotPassword(email: string) {
+        return api.post('/auth/forgot-password', { email });
+    }
+
+    resetPassword(email: string, code: string, newPassword: string) {
+        return api.post('/auth/reset-password', { email, code, newPassword });
     }
 
     getCurrentUser() {

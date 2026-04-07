@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import api from '../../api';
+import { useNotification } from '../../context/NotificationContext';
 
 export const AdminMedia = () => {
     const [media, setMedia] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { showNotification } = useNotification();
 
     useEffect(() => {
         fetchMedia();
@@ -15,7 +17,7 @@ export const AdminMedia = () => {
             const res = await api.get('/admin/media');
             setMedia(res.data);
         } catch {
-            console.error("Failed to fetch media");
+            showNotification("Failed to fetch media", "error");
         } finally {
             setLoading(false);
         }
@@ -26,8 +28,9 @@ export const AdminMedia = () => {
         try {
             await api.delete(`/admin/messages/${id}`);
             setMedia(media.filter(m => m.id !== id));
+            showNotification("Media deleted successfully", "success");
         } catch {
-            alert("Failed to delete media.");
+            showNotification("Failed to delete media.", "error");
         }
     };
 

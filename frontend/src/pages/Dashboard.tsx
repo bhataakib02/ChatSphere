@@ -5,9 +5,10 @@ import AuthService from '../services/auth.service';
 import ChatService from '../services/chat.service';
 import ContactService from '../services/contact.service';
 import MessageService from '../services/message.service';
-import api from '../api';
+import { useNotification } from '../context/NotificationContext';
 
 const Dashboard = () => {
+    const { showNotification } = useNotification();
     const navigate = useNavigate();
     const [currentUser, setCurrentUser] = useState<any>(null);
     const [users, setUsers] = useState<any[]>([]);
@@ -148,7 +149,7 @@ const Dashboard = () => {
     const runAddSearch = async () => {
         const q = addSearchQuery.trim();
         if (q.length < 2) {
-            alert('Type at least 2 characters (username or email).');
+            showNotification('Type at least 2 characters.', 'info');
             return;
         }
         setAddSearchLoading(true);
@@ -165,7 +166,7 @@ const Dashboard = () => {
     const handleSendContactRequest = async (receiverId: number) => {
         try {
             await ContactService.sendRequest(receiverId);
-            alert('Request sent.');
+            showNotification('Request sent.', 'success');
             setAddSearchResults(prev => prev.filter((u: any) => u.id !== receiverId));
             await loadRequests();
         } catch (e: any) {
@@ -184,19 +185,9 @@ const Dashboard = () => {
             await loadRequests();
             alert('Contact added to Duo Space!');
         } catch (e: any) {
-            const msg = e.response?.data?.message || 'Could not accept request.';
-            alert(msg);
+            const msg = e.response?.data?.message || 'Action failed.';
+            showNotification(msg, 'error');
         }
-    };
-
-    const handleRejectRequest = async (requestId: number) => {
-        try {
-            await ContactService.rejectRequest(requestId);
-            await loadRequests();
-        } catch {
-            alert('Could not reject request.');
-        }
-    };
 
     const handleCancelOutgoing = async (requestId: number) => {
         try {
@@ -229,7 +220,7 @@ const Dashboard = () => {
 
             stompClient.subscribe('/topic/announcements', (message) => {
                 const announcement = JSON.parse(message.body);
-                alert(`📢 SYSTEM ANNOUNCEMENT:\n\n${announcement.content}`);
+                showNotification(`📢 SYSTEM: ${announcement.content}`, 'info');
             });
 
             // Personal notifications topic (for background message delivery)
@@ -458,8 +449,9 @@ const Dashboard = () => {
             setSelectedFile(null);
             setFilePreview(null);
             setFileCaption("");
+            showNotification("File shared successfully", "success");
         } catch {
-            alert("File upload failed!");
+            showNotification("File upload failed!", "error");
         } finally {
             setIsUploading(false);
             if (imageInputRef.current) imageInputRef.current.value = "";
@@ -789,7 +781,7 @@ const Dashboard = () => {
             setShowSettingsModal(false);
         } catch (err: any) {
             console.error("Profile update failed:", err?.response?.data || err);
-            alert("Failed to update profile: " + (err?.response?.data?.message || err?.message || "Unknown error"));
+            showNotification("Update failed: " + (err?.response?.data?.message || "Error"), "error");
         } finally {
             setIsUpdatingProfile(false);
         }

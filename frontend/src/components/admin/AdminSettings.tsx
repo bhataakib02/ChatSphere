@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import api from '../../api';
+import { useNotification } from '../../context/NotificationContext';
 
 export const AdminSettings = () => {
     const [settings, setSettings] = useState<any[]>([]);
     const [broadcastMsg, setBroadcastMsg] = useState("");
     const [isBroadcasting, setIsBroadcasting] = useState(false);
+    const { showNotification } = useNotification();
 
     useEffect(() => {
         fetchSettings();
@@ -23,16 +25,16 @@ export const AdminSettings = () => {
                 ]);
             }
         } catch {
-            console.error("Failed to fetch settings");
+            showNotification("Failed to fetch settings", "error");
         }
     };
 
     const saveSettings = async () => {
         try {
             await api.put('/admin/settings', settings);
-            alert("System settings updated successfully.");
+            showNotification("System settings updated successfully.", "success");
         } catch {
-            alert("Failed to update settings.");
+            showNotification("Failed to update settings.", "error");
         }
     };
 
@@ -41,10 +43,10 @@ export const AdminSettings = () => {
         setIsBroadcasting(true);
         try {
             await api.post('/broadcast', { message: broadcastMsg });
-            alert("Broadcast sent to all online users!");
+            showNotification("Broadcast sent to all online users!", "success");
             setBroadcastMsg("");
         } catch {
-            alert("Failed to send broadcast.");
+            showNotification("Failed to send broadcast.", "error");
         } finally {
             setIsBroadcasting(false);
         }

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import api from '../../api';
+import { useNotification } from '../../context/NotificationContext';
 
 export const AdminReports = () => {
     const [reports, setReports] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('PENDING');
+    const { showNotification } = useNotification();
 
     useEffect(() => {
         fetchReports();
@@ -15,7 +17,7 @@ export const AdminReports = () => {
             const res = await api.get(`/admin/reports?status=${filter}`);
             setReports(res.data);
         } catch {
-            console.error("Failed to fetch reports");
+            showNotification("Failed to fetch reports", "error");
         } finally {
             setLoading(false);
         }
@@ -27,8 +29,9 @@ export const AdminReports = () => {
         try {
             await api.put(`/admin/reports/${reportId}`, { status, notes });
             setReports(reports.filter(r => r.id !== reportId));
+            showNotification(`Report mark as ${status}`, "success");
         } catch {
-            alert("Failed to resolve report.");
+            showNotification("Failed to resolve report.", "error");
         }
     };
 

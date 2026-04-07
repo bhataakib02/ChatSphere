@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../../api';
+import { useNotification } from '../../context/NotificationContext';
 
 export const AdminGroups = () => {
     const [chats, setChats] = useState<any[]>([]);
@@ -7,6 +8,7 @@ export const AdminGroups = () => {
     const [search, setSearch] = useState("");
     const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
     const [groupMembers, setGroupMembers] = useState<any[]>([]);
+    const { showNotification } = useNotification();
 
     useEffect(() => {
         fetchChats();
@@ -17,7 +19,7 @@ export const AdminGroups = () => {
             const res = await api.get('/admin/chats');
             setChats(res.data);
         } catch {
-            console.error("Failed to fetch chats");
+            showNotification("Failed to fetch chats", "error");
         } finally {
             setLoading(false);
         }
@@ -30,7 +32,7 @@ export const AdminGroups = () => {
             const res = await api.get(`/admin/groups/${chat.id}/members`);
             setGroupMembers(res.data);
         } catch {
-            console.error("Failed to fetch members");
+            showNotification("Failed to fetch members", "error");
         }
     };
 
@@ -40,8 +42,9 @@ export const AdminGroups = () => {
             await api.delete(`/admin/chats/${chatId}`);
             setChats(prev => prev.filter(c => c.id !== chatId));
             if (selectedGroup?.id === chatId) setSelectedGroup(null);
+            showNotification("Group disbanded successfully", "success");
         } catch {
-            alert("Failed to disband group.");
+            showNotification("Failed to disband group.", "error");
         }
     };
 

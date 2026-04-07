@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../../api';
+import { useNotification } from '../../context/NotificationContext';
 
 export const AdminMessages = () => {
     const [messages, setMessages] = useState<any[]>([]);
     const [search, setSearch] = useState("");
     const [userFilter, setUserFilter] = useState("");
     const [loading, setLoading] = useState(true);
+    const { showNotification } = useNotification();
 
     useEffect(() => {
         fetchMessages();
@@ -19,7 +21,7 @@ export const AdminMessages = () => {
             });
             setMessages(res.data);
         } catch {
-            console.error("Failed to fetch messages");
+            showNotification("Failed to fetch messages", "error");
         } finally {
             setLoading(false);
         }
@@ -30,8 +32,9 @@ export const AdminMessages = () => {
         try {
             await api.delete(`/admin/messages/${id}`);
             setMessages(messages.filter(m => m.id !== id));
+            showNotification("Message deleted globally", "success");
         } catch {
-            alert("Failed to delete message.");
+            showNotification("Failed to delete message.", "error");
         }
     };
 
