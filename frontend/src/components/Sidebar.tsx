@@ -10,7 +10,7 @@ const Sidebar = ({ selectedChat, onSelectChat, currentUser }: any) => {
         if (currentUser) {
             fetchChats();
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when currentUser reference changes only
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when currentUser reference changes only
     }, [currentUser]);
 
     const fetchChats = async () => {
@@ -31,7 +31,7 @@ const Sidebar = ({ selectedChat, onSelectChat, currentUser }: any) => {
         <div className="w-80 flex flex-col bg-duo-void border-r border-white/10">
             {/* Header */}
             <div className="p-4 flex items-center justify-between">
-                <h1 className="text-xl font-bold text-white">ChatSphere</h1>
+                <h1 className="text-xl font-bold text-white">ChatSphare</h1>
                 <div className="flex gap-2">
                     <button className="p-2 hover:bg-white/10 rounded-lg text-duo-lavenderMuted transition-colors">
                         <Plus size={20} />

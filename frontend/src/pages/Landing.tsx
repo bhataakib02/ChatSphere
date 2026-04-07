@@ -18,7 +18,7 @@ const Landing = () => {
                                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg>
                             </div>
                         </div>
-                        <span className="text-2xl font-black tracking-tight text-gray-800">ChatSphere <span className="text-[#ff4d6d]">Duo</span></span>
+                        <span className="text-2xl font-black tracking-tight text-gray-800">ChatSphare <span className="text-[#ff4d6d]">Duo</span></span>
                     </div>
                     <div className="hidden md:flex items-center space-x-10 text-sm font-bold uppercase tracking-widest text-gray-600">
                         <a href="#features" className="hover:text-[#ff4d6d] transition-colors">Shared Moments</a>
@@ -43,7 +43,7 @@ const Landing = () => {
                     </h1>
 
                     <p className="max-w-2xl text-xl md:text-2xl text-gray-600 font-medium mb-12">
-                        ChatSphere Duo is your intimate, secure, and beautiful shared space. No noise, just you and your favorite person.
+                        ChatSphare Duo is your intimate, secure, and beautiful shared space. No noise, just you and your favorite person.
                     </p>
 
                     <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6">
@@ -88,7 +88,7 @@ const Landing = () => {
 
             {/* Footer */}
             <footer className="max-w-7xl mx-auto px-6 py-12 border-t border-gray-300/50 text-center text-gray-500 text-sm font-medium">
-                © 2026 ChatSphere Duo. Built for love and security.
+                © 2026 ChatSphare Duo. Built for love and security.
             </footer>
         </div>
     );

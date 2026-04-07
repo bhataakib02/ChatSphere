@@ -37,7 +37,7 @@ export const AdminHealth = () => {
         <div className="relative z-10 animate-fade-in-up">
             <div className="mb-10">
                 <h1 className="text-4xl font-black text-white mb-2 tracking-tight">System Diagnostics</h1>
-                <p className="text-duo-lavenderMuted text-sm italic">Real-time telemetry from the ChatSphere core engine.</p>
+                <p className="text-duo-lavenderMuted text-sm italic">Real-time telemetry from the ChatSphare core engine.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
