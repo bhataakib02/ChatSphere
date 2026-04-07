@@ -11,7 +11,6 @@ const Register = () => {
     const [fullName, setFullName] = useState("");
     const [profilePreview, setProfilePreview] = useState<string | null>(null);
     const [successful, setSuccessful] = useState(false);
-    const [message, setMessage] = useState("");
     const [loading, setLoading] = useState(false);
     const [agreed, setAgreed] = useState(false);
     const [strength, setStrength] = useState({ score: 0, label: "Weak", color: "bg-gray-300" });
@@ -153,12 +152,6 @@ const Register = () => {
                                     checked={agreed} onChange={e => setAgreed(e.target.checked)} />
                                 <span className="text-xs text-gray-600 font-medium group-hover:text-gray-800 transition-colors">I agree to the <span className="text-[#ff4d6d] font-bold">Terms & Conditions</span> and Privacy Policy.</span>
                             </label>
-
-                            {message && !successful && (
-                                <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] py-3 px-4 rounded-xl text-center font-bold animate-shake uppercase tracking-wider">
-                                    {message}
-                                </div>
-                            )}
 
                             <button type="submit" disabled={loading}
                                 className="w-full bg-gradient-to-r from-[#ff4d6d] to-[#ff85a1] hover:scale-[1.02] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#ff4d6d]/20 transition-all active:scale-[0.98] disabled:opacity-70 text-lg uppercase tracking-widest">

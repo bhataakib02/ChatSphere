@@ -62,12 +62,6 @@ const Verification = () => {
                                 </div>
                             </div>
 
-                            {message && (
-                                <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] py-3 px-4 rounded-xl text-center font-bold uppercase tracking-wider animate-shake">
-                                    {message}
-                                </div>
-                            )}
-
                             <button type="submit" disabled={loading || code.length < 6}
                                 className="w-full bg-gradient-to-r from-[#ff4d6d] to-[#ff85a1] hover:scale-[1.02] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#ff4d6d]/20 transition-all active:scale-[0.98] disabled:opacity-50 text-lg uppercase tracking-widest">
                                 {loading ? "Verifying duo identity..." : "Verify & Connect"}

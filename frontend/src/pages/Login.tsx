@@ -9,7 +9,6 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState("");
     const navigate = useNavigate();
 
     const { showNotification } = useNotification();
@@ -19,7 +18,7 @@ const Login = () => {
         setLoading(true);
 
         AuthService.login(username, password).then(
-            (data) => {
+            () => {
                 if (rememberMe) {
                     localStorage.setItem('remembered_username', username);
                 } else {
@@ -86,14 +85,8 @@ const Login = () => {
                                     checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
                                 <span className="text-xs font-bold text-gray-500 group-hover:text-gray-700 transition-colors uppercase tracking-wider">Remember Me</span>
                             </label>
-                            <Link to="/forgot-password" size="sm" className="text-xs font-bold text-[#ff4d6d] hover:underline uppercase tracking-wider">Forgot Password?</Link>
+                            <Link to="/forgot-password" className="text-xs font-bold text-[#ff4d6d] hover:underline uppercase tracking-wider">Forgot Password?</Link>
                         </div>
-
-                        {message && (
-                            <div className={`text-[10px] py-3 px-4 rounded-xl text-center font-bold uppercase tracking-widest animate-shake ${message.includes("verified") ? "bg-orange-500/10 text-orange-500 border border-orange-500/20" : "bg-red-500/10 text-red-500 border border-red-500/20"}`}>
-                                {message}
-                            </div>
-                        )}
 
                         <button type="submit" disabled={loading}
                             className="w-full bg-gradient-to-r from-[#ff4d6d] to-[#ff85a1] hover:scale-[1.02] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#ff4d6d]/20 transition-all active:scale-[0.98] disabled:opacity-70 text-lg uppercase tracking-widest">

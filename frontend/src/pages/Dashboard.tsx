@@ -5,6 +5,7 @@ import AuthService from '../services/auth.service';
 import ChatService from '../services/chat.service';
 import ContactService from '../services/contact.service';
 import MessageService from '../services/message.service';
+import api from '../api';
 import { useNotification } from '../context/NotificationContext';
 
 const Dashboard = () => {
@@ -17,6 +18,7 @@ const Dashboard = () => {
     const [messages, setMessages] = useState<any[]>([]);
     const [newMessage, setNewMessage] = useState("");
     const [isConnected, setIsConnected] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     // UI elements
     const [showSidebar, setShowSidebar] = useState(true);

@@ -103,12 +103,6 @@ const ForgotPassword = () => {
                                 )}
                             </div>
 
-                            {message && (
-                                <div className={`text-[10px] py-3 px-4 rounded-xl text-center font-bold uppercase tracking-widest animate-shake ${message.includes("sent") || message.includes("success") ? "bg-green-500/10 text-green-500 border border-green-500/20" : "bg-red-500/10 text-red-500 border border-red-500/20"}`}>
-                                    {message}
-                                </div>
-                            )}
-
                             <button type="submit" disabled={loading}
                                 className="w-full bg-gradient-to-r from-[#ff4d6d] to-[#ff85a1] hover:scale-[1.02] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#ff4d6d]/20 transition-all active:scale-[0.98] disabled:opacity-70 text-lg uppercase tracking-widest">
                                 {loading ? "Re-syncing hearts..." : step === 1 ? "Send Recovery Code" : "Reset Password"}
