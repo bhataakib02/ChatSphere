@@ -33,14 +33,6 @@ const Register = () => {
     }, []);
 
     useEffect(() => {
-        // Auto-suggest username from full name
-        if (fullName && !username) {
-            const suggested = fullName.toLowerCase().replace(/\s+/g, '') + Math.floor(Math.random() * 100);
-            setUsername(suggested);
-        }
-    }, [fullName, username]);
-
-    useEffect(() => {
         // Simple password strength logic
         let score = 0;
         if (password.length > 7) score++;

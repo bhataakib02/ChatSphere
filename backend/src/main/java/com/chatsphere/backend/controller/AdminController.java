@@ -110,20 +110,24 @@ public class AdminController {
                 return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Cannot delete your own super admin account"));
             }
 
-            // Cleanup related data manually to prevent Foreign Key Constraint Violation exceptions
-            // Delete reports referencing messages sent by this user
+            // Cleanup all related data to prevent Foreign Key Constraint violations
+            // Step 1: Reports that reference messages sent by this user
             jdbcTemplate.update("DELETE FROM reports WHERE reported_message_id IN (SELECT id FROM messages WHERE sender_id = ?)", id);
-            
-            // Delete direct entity relationships
-            jdbcTemplate.update("DELETE FROM user_blocks WHERE blocker_id = ? OR blocked_id = ?", id, id);
-            jdbcTemplate.update("DELETE FROM friend_requests WHERE sender_id = ? OR receiver_id = ?", id, id);
-            jdbcTemplate.update("DELETE FROM contacts WHERE user_id = ? OR contact_user_id = ?", id, id);
+            // Step 2: Reports directly involving user
             jdbcTemplate.update("DELETE FROM reports WHERE reporter_id = ? OR reported_user_id = ?", id, id);
+            // Step 3: User blocks
+            jdbcTemplate.update("DELETE FROM user_blocks WHERE blocker_id = ? OR blocked_id = ?", id, id);
+            // Step 4: Friend requests (uses sender_id / receiver_id columns)
+            jdbcTemplate.update("DELETE FROM friend_requests WHERE sender_id = ? OR receiver_id = ?", id, id);
+            // Step 5: Contacts (uses user_low_id / user_high_id columns - matched from Contact entity)
+            jdbcTemplate.update("DELETE FROM contacts WHERE user_low_id = ? OR user_high_id = ?", id, id);
+            // Step 6: Messages sent by user
             jdbcTemplate.update("DELETE FROM messages WHERE sender_id = ?", id);
+            // Step 7: Chat participants join table
             jdbcTemplate.update("DELETE FROM chat_participants WHERE user_id = ?", id);
+            // Step 8: Active sessions
             jdbcTemplate.update("DELETE FROM user_sessions WHERE user_id = ?", id);
-            
-            // Unlink admin logs to preserve history without breaking constraints
+            // Step 9: Nullify admin logs to preserve audit history
             jdbcTemplate.update("UPDATE admin_logs SET admin_id = NULL WHERE admin_id = ?", id);
 
             userRepository.delete(user);
