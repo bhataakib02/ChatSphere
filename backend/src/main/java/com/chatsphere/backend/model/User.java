@@ -42,6 +42,7 @@ public class User {
 
     private LocalDateTime lastSeen;
     private boolean online;
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

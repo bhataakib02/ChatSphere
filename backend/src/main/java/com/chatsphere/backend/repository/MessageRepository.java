@@ -23,4 +23,9 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     @Transactional
     @Query("DELETE FROM Message m WHERE m.type <> 'TEXT' AND m.createdAt < :cutoff")
     int deleteOldMedia(@Param("cutoff") LocalDateTime cutoff);
+
+    @Query(value = "SELECT CAST(created_at AS DATE) as date, COUNT(id) as count FROM messages WHERE created_at >= CURRENT_DATE - INTERVAL '7 days' GROUP BY CAST(created_at AS DATE) ORDER BY date ASC", nativeQuery = true)
+    List<Object[]> countMessagesPerDayLast7Days();
+
+    long countBySenderId(Long senderId);
 }

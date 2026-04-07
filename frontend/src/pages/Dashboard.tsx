@@ -93,7 +93,7 @@ const Dashboard = () => {
             if (stompClientRef.current) stompClientRef.current.deactivate();
             cancelRecording();
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- session bootstrap; cancelRecording stable for teardown intent
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- session bootstrap; cancelRecording stable for teardown intent
     }, [navigate]);
 
     useEffect(() => {
@@ -218,7 +218,14 @@ const Dashboard = () => {
                     u.id === statusUpdate.userId ? { ...u, online: statusUpdate.online, lastSeen: statusUpdate.lastSeen } : u
                 ));
             });
+
+            stompClient.subscribe('/topic/announcements', (message) => {
+                const announcement = JSON.parse(message.body);
+                // In a real app, use a Toast system. For now, we use a custom alert.
+                alert(`📢 SYSTEM ANNOUNCEMENT:\n\n${announcement.content}`);
+            });
         };
+
         stompClient.onWebSocketClose = () => setIsConnected(false);
 
         stompClient.activate();
