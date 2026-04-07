@@ -98,7 +98,10 @@ public class AdminController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
     @DeleteMapping("/users/{id}")
+    @Transactional
     public ResponseEntity<?> deleteUser(@PathVariable Long id, org.springframework.security.core.Authentication auth) {
         return userRepository.findById(id).map(user -> {
             // Check if we are trying to delete ourselves
@@ -106,6 +109,22 @@ public class AdminController {
             if (user.getId().equals(current.getId())) {
                 return ResponseEntity.badRequest().body(Collections.singletonMap("error", "Cannot delete your own super admin account"));
             }
+
+            // Cleanup related data manually to prevent Foreign Key Constraint Violation exceptions
+            // Delete reports referencing messages sent by this user
+            jdbcTemplate.update("DELETE FROM reports WHERE reported_message_id IN (SELECT id FROM messages WHERE sender_id = ?)", id);
+            
+            // Delete direct entity relationships
+            jdbcTemplate.update("DELETE FROM user_blocks WHERE blocker_id = ? OR blocked_id = ?", id, id);
+            jdbcTemplate.update("DELETE FROM friend_requests WHERE sender_id = ? OR receiver_id = ?", id, id);
+            jdbcTemplate.update("DELETE FROM contacts WHERE user_id = ? OR contact_user_id = ?", id, id);
+            jdbcTemplate.update("DELETE FROM reports WHERE reporter_id = ? OR reported_user_id = ?", id, id);
+            jdbcTemplate.update("DELETE FROM messages WHERE sender_id = ?", id);
+            jdbcTemplate.update("DELETE FROM chat_participants WHERE user_id = ?", id);
+            jdbcTemplate.update("DELETE FROM user_sessions WHERE user_id = ?", id);
+            
+            // Unlink admin logs to preserve history without breaking constraints
+            jdbcTemplate.update("UPDATE admin_logs SET admin_id = NULL WHERE admin_id = ?", id);
 
             userRepository.delete(user);
             User admin = userRepository.findById(current.getId()).orElse(null);
