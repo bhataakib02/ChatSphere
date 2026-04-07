@@ -73,7 +73,7 @@ export const AdminReports = () => {
                                         <span className="px-2 py-0.5 bg-red-500/10 text-red-300 border border-red-500/20 rounded text-[10px] font-bold uppercase tracking-tighter">REPORT #{report.id}</span>
                                         <span className="text-duo-lavenderMuted text-xs font-mono">{new Date(report.createdAt).toLocaleString()}</span>
                                     </div>
-                                    <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex space-x-2">
                                         <button onClick={() => resolveReport(report.id, 'RESOLVED')} className="bg-green-500/10 hover:bg-green-500 text-green-400 hover:text-white border border-green-500/30 px-3 py-1 rounded-lg text-[10px] font-bold transition-all">RESOLVE</button>
                                         <button onClick={() => resolveReport(report.id, 'IGNORED')} className="bg-white/5 hover:bg-white/20 text-duo-mist border border-white/10 px-3 py-1 rounded-lg text-[10px] font-bold transition-all">IGNORE</button>
                                     </div>
