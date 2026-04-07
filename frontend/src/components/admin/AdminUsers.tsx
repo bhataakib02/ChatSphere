@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import api from '../../api';
 
 export const AdminUsers = ({ users, setUsers, currentUserRole }: { users: any[], setUsers: any, currentUserRole: string }) => {
