@@ -22,7 +22,7 @@ api.interceptors.request.use((config) => {
         token = localStorage.getItem('token');
     }
     if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+        config.headers.set('Authorization', `Bearer ${token}`);
     }
     return config;
 });

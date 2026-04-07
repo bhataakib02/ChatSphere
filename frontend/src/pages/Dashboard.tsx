@@ -725,14 +725,15 @@ const Dashboard = () => {
         }
     };
 
-    const handleProfilePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleProfilePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        const compressedFile = await compressImage(file);
         const reader = new FileReader();
         reader.onloadend = () => {
             setProfilePhotoPreview(reader.result as string);
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(compressedFile);
     };
 
     const handleUpdateProfile = async () => {
