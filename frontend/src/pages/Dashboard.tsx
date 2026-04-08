@@ -264,14 +264,25 @@ const Dashboard = () => {
 
     const handleIncomingMessage = async (msg: any) => {
         if (msg.encrypted && msg.content) {
-            // If I am the recipient or sender, attempt decryption
-            // (Note: In pure RSA 1-on-1, sender can't decrypt unless double encrypted. For demo, we assume receiving side)
+            let cipherText = msg.content;
+            let isLegacy = true;
+            try {
+                const parsed = JSON.parse(msg.content);
+                if (parsed.r && parsed.m) {
+                    cipherText = (msg.sender?.id === currentUser.id) ? parsed.m : parsed.r;
+                    isLegacy = false;
+                }
+            } catch { }
+
             if (msg.sender?.id !== currentUser.id) {
-                msg.content = await decryptText(msg.content, currentUser.id);
+                msg.content = await decryptText(cipherText, currentUser.id);
             } else {
-                // For sender, check local cache for plaintext
-                const cached = localStorage.getItem(`sent_msg_${msg.content}`);
-                if (cached) msg.content = cached;
+                if (!isLegacy) {
+                    msg.content = await decryptText(cipherText, currentUser.id);
+                } else {
+                    const cached = localStorage.getItem(`sent_msg_${msg.content}`);
+                    if (cached) msg.content = cached;
+                }
             }
         }
         setMessages(prev => {
@@ -289,12 +300,27 @@ const Dashboard = () => {
             const res = await MessageService.getChatMessages(chat.id);
             // Pre-decrypt messages
             const decryptedMessages = await Promise.all(res.data.map(async (msg: any) => {
-                if (msg.encrypted && msg.sender?.id !== currentUser.id) {
-                    return { ...msg, content: await decryptText(msg.content, currentUser.id) };
-                }
-                if (msg.encrypted && msg.sender?.id === currentUser.id) {
-                    const cached = localStorage.getItem(`sent_msg_${msg.content}`);
-                    if (cached) return { ...msg, content: cached };
+                if (msg.encrypted && msg.content) {
+                    let cipherText = msg.content;
+                    let isLegacy = true;
+                    try {
+                        const parsed = JSON.parse(msg.content);
+                        if (parsed.r && parsed.m) {
+                            cipherText = (msg.sender?.id === currentUser.id) ? parsed.m : parsed.r;
+                            isLegacy = false;
+                        }
+                    } catch { }
+
+                    if (msg.sender?.id !== currentUser.id) {
+                        return { ...msg, content: await decryptText(cipherText, currentUser.id) };
+                    } else {
+                        if (!isLegacy) {
+                            return { ...msg, content: await decryptText(cipherText, currentUser.id) };
+                        } else {
+                            const cached = localStorage.getItem(`sent_msg_${msg.content}`);
+                            if (cached) return { ...msg, content: cached };
+                        }
+                    }
                 }
                 return msg;
             }));
@@ -656,21 +682,31 @@ const Dashboard = () => {
 
     const encryptText = async (text: string, recipientPubKeyBase64: string) => {
         try {
-            const binaryDerString = window.atob(recipientPubKeyBase64);
-            const binaryDer = new Uint8Array(binaryDerString.length);
-            for (let i = 0; i < binaryDerString.length; i++) binaryDer[i] = binaryDerString.charCodeAt(i);
+            const encryptForAKey = async (t: string, pubKeyB64: string) => {
+                const binaryDerString = window.atob(pubKeyB64);
+                const binaryDer = new Uint8Array(binaryDerString.length);
+                for (let i = 0; i < binaryDerString.length; i++) binaryDer[i] = binaryDerString.charCodeAt(i);
 
-            const publicKey = await window.crypto.subtle.importKey(
-                "spki",
-                binaryDer.buffer,
-                { name: "RSA-OAEP", hash: "SHA-256" },
-                true,
-                ["encrypt"]
-            );
+                const publicKey = await window.crypto.subtle.importKey(
+                    "spki",
+                    binaryDer.buffer,
+                    { name: "RSA-OAEP", hash: "SHA-256" },
+                    true,
+                    ["encrypt"]
+                );
 
-            const encoded = new TextEncoder().encode(text);
-            const encrypted = await window.crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encoded);
-            return btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+                const encoded = new TextEncoder().encode(t);
+                const encrypted = await window.crypto.subtle.encrypt({ name: "RSA-OAEP" }, publicKey, encoded);
+                return btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+            };
+
+            const encRecipient = await encryptForAKey(text, recipientPubKeyBase64);
+            let encMe = encRecipient;
+            if (currentUser && currentUser.publicKey) {
+                encMe = await encryptForAKey(text, currentUser.publicKey);
+            }
+
+            return JSON.stringify({ r: encRecipient, m: encMe });
         } catch (e) {
             console.error("Encryption failed", e);
             return text;
