@@ -96,7 +96,7 @@ const Dashboard = () => {
             setBio(user.bio || "");
             setProfileUsername(user.username || "");
             fetchInitialData(user.id);
-            connectWebSocket(user.token);
+            connectWebSocket(user.token, user.id);
             ensureE2EEKeys(user);
         }
 
@@ -214,7 +214,7 @@ const Dashboard = () => {
         }
     };
 
-    const connectWebSocket = (token: string) => {
+    const connectWebSocket = (token: string, userId: number) => {
         const wsUrl = import.meta.env.VITE_WS_URL?.trim()
             ? import.meta.env.VITE_WS_URL.trim()
             : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
@@ -240,7 +240,7 @@ const Dashboard = () => {
             });
 
             // Personal notifications topic (for background message delivery)
-            stompClient.subscribe(`/queue/user/${currentUser.id}/notifications`, (message) => {
+            stompClient.subscribe(`/queue/user/${userId}/notifications`, (message) => {
                 const msg = JSON.parse(message.body);
                 if (activeChatRef.current?.id !== msg.chatId) {
                     // Update chat list to show unread count or move to top
