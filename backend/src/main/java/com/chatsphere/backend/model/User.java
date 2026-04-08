@@ -44,6 +44,8 @@ public class User {
     private String bio;
     @Column(columnDefinition = "TEXT")
     private String publicKey;
+    @Column(columnDefinition = "TEXT")
+    private String encryptedPrivateKey;
 
     private LocalDateTime lastSeen;
     @Column(nullable = false, columnDefinition = "boolean default false")
@@ -75,6 +77,8 @@ public class User {
     public void setBio(String bio) { this.bio = bio; }
     public String getPublicKey() { return publicKey; }
     public void setPublicKey(String publicKey) { this.publicKey = publicKey; }
+    public String getEncryptedPrivateKey() { return encryptedPrivateKey; }
+    public void setEncryptedPrivateKey(String encryptedPrivateKey) { this.encryptedPrivateKey = encryptedPrivateKey; }
     public LocalDateTime getLastSeen() { return lastSeen; }
     public void setLastSeen(LocalDateTime lastSeen) { this.lastSeen = lastSeen; }
     public boolean isOnline() { return online; }
@@ -105,6 +109,7 @@ public class User {
         private boolean online;
         private boolean locked = false;
         private boolean isVerified = false;
+        private String encryptedPrivateKey;
         private LocalDateTime createdAt;
 
         public UserBuilder username(String v) { this.username = v; return this; }
@@ -115,6 +120,7 @@ public class User {
         public UserBuilder online(boolean v) { this.online = v; return this; }
         public UserBuilder locked(boolean v) { this.locked = v; return this; }
         public UserBuilder isVerified(boolean v) { this.isVerified = v; return this; }
+        public UserBuilder encryptedPrivateKey(String v) { this.encryptedPrivateKey = v; return this; }
         public UserBuilder createdAt(LocalDateTime v) { this.createdAt = v; return this; }
 
         public User build() {
@@ -127,6 +133,7 @@ public class User {
             u.setOnline(online);
             u.setLocked(locked);
             u.setVerified(isVerified);
+            u.setEncryptedPrivateKey(encryptedPrivateKey);
             if (createdAt != null) u.setCreatedAt(createdAt);
             return u;
         }
