@@ -78,6 +78,9 @@ const Dashboard = () => {
 
     // Threading
     const [replyingTo, setReplyingTo] = useState<any>(null);
+    const [showKeySyncWarning, setShowKeySyncWarning] = useState(false);
+    const [showBackupKey, setShowBackupKey] = useState(false);
+    const [importedKey, setImportedKey] = useState("");
 
     const stompClientRef = useRef<Client | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -735,7 +738,7 @@ const Dashboard = () => {
             const encryptedBinary = window.atob(encryptedBase64);
             const encryptedData = new Uint8Array(encryptedBinary.length);
             for (let i = 0; i < encryptedBinary.length; i++) encryptedData[i] = encryptedBinary.charCodeAt(i);
-
+            const decrypted = await window.crypto.subtle.decrypt({ name: "RSA-OAEP" }, privateKey, encryptedData);
             return new TextDecoder().decode(decrypted);
         } catch (e) {
             // Silently return encrypted label to avoid console errors when device keys don't match old message ciphertext
@@ -794,7 +797,15 @@ const Dashboard = () => {
         const storedKeys = localStorage.getItem(`chat_keys_${user.id}`);
         if (storedKeys) return;
 
-        console.log("Generating E2EE keys...");
+        // If server already has a public key, but we don't have a private key, do NOT overwrite.
+        // This prevents breaking existing sessions on other devices.
+        if (user.publicKey) {
+            console.warn("Server has a public key but this device lacks a private key. Sync required.");
+            setShowKeySyncWarning(true);
+            return;
+        }
+
+        console.log("Generating fresh E2EE keys...");
         try {
             const keyPair = await window.crypto.subtle.generateKey(
                 {
@@ -829,6 +840,20 @@ const Dashboard = () => {
             console.log("E2EE keys synced.");
         } catch (err) {
             console.error("Encryption error", err);
+        }
+    };
+
+    const handleImportKey = async () => {
+        if (!importedKey.trim()) return;
+        try {
+            const parsed = JSON.parse(importedKey.trim());
+            if (!parsed.publicKey || !parsed.privateKey) throw new Error("Invalid key format");
+            
+            localStorage.setItem(`chat_keys_${currentUser.id}`, JSON.stringify(parsed));
+            showNotification("E2EE Keys synchronized! Refreshing...", "success");
+            setTimeout(() => window.location.reload(), 1500);
+        } catch {
+            showNotification("Invalid backup key format.", "error");
         }
     };
 
@@ -1110,6 +1135,17 @@ const Dashboard = () => {
                                 </button>
                             </div>
                         </div>
+
+                        {/* Key Sync Warning Banner */}
+                        {showKeySyncWarning && (
+                            <div className="bg-rose-500 text-white px-4 py-2 text-[10px] md:text-xs font-black flex items-center justify-between animate-pulse shrink-0 z-30 relative">
+                                <div className="flex items-center">
+                                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-11a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                    <span>HISTORY LOCKED: Sync keys from another device in Settings to read old messages.</span>
+                                </div>
+                                <button onClick={() => setShowSettingsModal(true)} className="underline decoration-2 underline-offset-2 hover:opacity-80">GO TO SETTINGS</button>
+                            </div>
+                        )}
 
                         {/* Messages Flow */}
                         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6 flex flex-col custom-scrollbar relative z-0">
@@ -1674,6 +1710,57 @@ const Dashboard = () => {
                                                 <svg className="w-4 h-4 text-[#ff4d6d]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                                             </div>
                                             <span className="text-sm font-bold text-gray-600">Role: {currentUser.role?.replace('ROLE_', '') || 'USER'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                 {/* Security & Encryption Section */}
+                                <div className="bg-rose-50/50 rounded-2xl p-5 border border-rose-100">
+                                    <label className="block text-[10px] font-black text-rose-500 uppercase tracking-widest mb-3">Security & Encryption</label>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-[10px] text-gray-500 font-bold mb-3 italic">Shared Duo Space uses E2EE. To read messages on new devices, import your backup key.</p>
+                                            <div className="flex flex-col space-y-2">
+                                                <button
+                                                    onClick={() => setShowBackupKey(!showBackupKey)}
+                                                    className="w-full py-3 rounded-xl bg-white border border-rose-200 text-[#ff4d6d] text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all"
+                                                >
+                                                    {showBackupKey ? 'Hide Backup Key' : 'Reveal Backup Key'}
+                                                </button>
+                                                {showBackupKey && (
+                                                    <div className="p-3 bg-white rounded-xl border border-rose-100 break-all">
+                                                        <code className="text-[9px] text-gray-600 block mb-2">{localStorage.getItem(`chat_keys_${currentUser.id}`)}</code>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                navigator.clipboard.writeText(localStorage.getItem(`chat_keys_${currentUser.id}`) || '');
+                                                                showNotification("Copied to clipboard!", "success");
+                                                            }}
+                                                            className="text-[9px] font-black text-[#ff4d6d] uppercase"
+                                                        >
+                                                            Copy to clipboard
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="border-t border-rose-100 pt-4">
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Import Key Pair (JSON)</label>
+                                            <textarea
+                                                placeholder='{"publicKey": "...", "privateKey": "..."}'
+                                                value={importedKey}
+                                                onChange={(e) => setImportedKey(e.target.value)}
+                                                className="w-full bg-white border border-rose-100 rounded-xl p-3 text-[10px] font-mono focus:outline-none focus:ring-2 focus:ring-[#ff4d6d]/20 mb-2"
+                                                rows={2}
+                                            />
+                                            <button
+                                                onClick={handleImportKey}
+                                                disabled={!importedKey.trim()}
+                                                className="w-full py-3 rounded-xl bg-[#ff4d6d] text-white text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-md active:scale-95 disabled:opacity-50"
+                                            >
+                                                Import & Sync
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
