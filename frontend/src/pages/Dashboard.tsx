@@ -265,8 +265,9 @@ const Dashboard = () => {
             if (msg.sender?.id !== currentUser.id) {
                 msg.content = await decryptText(msg.content, currentUser.id);
             } else {
-                // For sender, since it's locally sent, they know what they sent. 
-                // But if they refresh, they see cipher. Ideally we'd store a local cleartext cache.
+                // For sender, check local cache for plaintext
+                const cached = localStorage.getItem(`sent_msg_${msg.content}`);
+                if (cached) msg.content = cached;
             }
         }
         setMessages(prev => {
@@ -286,6 +287,10 @@ const Dashboard = () => {
             const decryptedMessages = await Promise.all(res.data.map(async (msg: any) => {
                 if (msg.encrypted && msg.sender?.id !== currentUser.id) {
                     return { ...msg, content: await decryptText(msg.content, currentUser.id) };
+                }
+                if (msg.encrypted && msg.sender?.id === currentUser.id) {
+                    const cached = localStorage.getItem(`sent_msg_${msg.content}`);
+                    if (cached) return { ...msg, content: cached };
                 }
                 return msg;
             }));
@@ -444,12 +449,24 @@ const Dashboard = () => {
                 selectedFile.type.startsWith('video/') ? 'VIDEO' :
                     selectedFile.type.startsWith('audio/') ? 'AUDIO' : 'FILE';
 
+            let contentToSend = fileCaption || selectedFile.name;
+            let isEncrypted = false;
+
+            const otherParticipant = !activeChat.isGroup ? activeChat.participants.find((p: any) => p.id !== currentUser.id) : null;
+            if (otherParticipant && otherParticipant.publicKey) {
+                const encrypted = await encryptText(contentToSend, otherParticipant.publicKey);
+                localStorage.setItem(`sent_msg_${encrypted}`, contentToSend);
+                contentToSend = encrypted;
+                isEncrypted = true;
+            }
+
             const chatMessage = {
                 chatId: activeChat.id,
                 senderId: currentUser.id,
-                content: fileCaption || selectedFile.name,
+                content: contentToSend,
                 type: type,
-                fileUrl: fileUrl
+                fileUrl: fileUrl,
+                encrypted: isEncrypted
             };
 
             stompClientRef.current?.publish({
@@ -485,6 +502,7 @@ const Dashboard = () => {
             // For this demo, we'll encrypt strictly for recipient.
             contentToSend = await encryptText(newMessage, otherParticipant.publicKey);
             isEncrypted = true;
+            localStorage.setItem(`sent_msg_${contentToSend}`, newMessage);
         }
 
         const chatMessage = {
@@ -563,12 +581,24 @@ const Dashboard = () => {
                 setIsUploading(true);
                 try {
                     const res = await MessageService.uploadFile(audioFile);
+                    let contentToSend = formatTime(recordingTime);
+                    let isEncrypted = false;
+
+                    const otherParticipant = !activeChat.isGroup ? activeChat.participants.find((p: any) => p.id !== currentUser.id) : null;
+                    if (otherParticipant && otherParticipant.publicKey) {
+                        const encrypted = await encryptText(contentToSend, otherParticipant.publicKey);
+                        localStorage.setItem(`sent_msg_${encrypted}`, contentToSend);
+                        contentToSend = encrypted;
+                        isEncrypted = true;
+                    }
+
                     const chatMessage = {
                         chatId: activeChat.id,
                         senderId: currentUser.id,
-                        content: formatTime(recordingTime),
+                        content: contentToSend,
                         type: "AUDIO",
-                        fileUrl: res.data.fileUrl
+                        fileUrl: res.data.fileUrl,
+                        encrypted: isEncrypted
                     };
                     stompClientRef.current?.publish({
                         destination: '/app/chat.sendMessage',
@@ -991,7 +1021,10 @@ const Dashboard = () => {
                         {/* Header */}
                         <div className="px-4 py-3 md:py-4 border-b border-[#ff4d6d]/20 bg-white/60 backdrop-blur flex justify-between items-center shadow-sm z-10">
                             <div className="flex items-center space-x-3 w-full">
-                                <button onClick={() => setShowSettingsModal(true)} className="p-3 text-[#ff4d6d] hover:bg-[#ff4d6d]/10 rounded-2xl transition-all">
+                                <button onClick={() => setShowSidebar(true)} className="md:hidden p-2 -ml-2 text-[#ff4d6d] hover:bg-[#ff4d6d]/10 rounded-xl transition-all">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
+                                </button>
+                                <button onClick={() => setShowSettingsModal(true)} className="p-3 text-[#ff4d6d] hover:bg-[#ff4d6d]/10 rounded-2xl transition-all hidden md:block">
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
                                 </button>
 
@@ -1028,6 +1061,10 @@ const Dashboard = () => {
                                         )}
                                     </div>
                                 </div>
+
+                                <button className="md:hidden p-2 text-rose-300 hover:text-rose-500 rounded-full transition-all shrink-0" onClick={() => setShowSettingsModal(true)}>
+                                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+                                </button>
                             </div>
                         </div>
 
@@ -1177,7 +1214,7 @@ const Dashboard = () => {
                                         type="button"
                                         disabled={isRecording}
                                         onClick={(e) => { e.stopPropagation(); setShowAttachMenu(!showAttachMenu); }}
-                                        className={`p-3 md:p-4 rounded-2xl md:rounded-3xl transition-all mb-0 shrink-0 shadow-sm border border-rose-100 ${showAttachMenu
+                                        className={`p-3 md:p-4 rounded-2xl md:rounded-3xl transition-all h-[48px] w-[48px] md:h-[56px] md:w-[56px] flex items-center justify-center mb-0 shrink-0 shadow-sm border border-rose-100 ${showAttachMenu
                                             ? 'text-white bg-[#ff4d6d] scale-105 border-[#ff4d6d]'
                                             : 'bg-white/60 text-rose-400 hover:text-rose-600 hover:bg-white disabled:opacity-30'
                                             }`}
@@ -1198,10 +1235,14 @@ const Dashboard = () => {
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="flex-1 relative bg-white/80 rounded-2xl md:rounded-3xl border border-rose-100 transition-all focus-within:border-rose-400/50 focus-within:ring-4 focus-within:ring-rose-500/10 focus-within:bg-white shadow-inner overflow-hidden">
+                                    <div className="flex-1 relative bg-white/80 rounded-2xl md:rounded-3xl border border-rose-100 transition-all focus-within:border-rose-400/50 focus-within:ring-4 focus-within:ring-rose-500/10 focus-within:bg-white shadow-inner overflow-hidden flex items-center">
                                         <textarea
                                             value={newMessage}
-                                            onChange={handleInputChange}
+                                            onChange={(e) => {
+                                                handleInputChange(e);
+                                                e.target.style.height = 'auto';
+                                                e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                                            }}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && !e.shiftKey) {
                                                     e.preventDefault();
@@ -1211,8 +1252,8 @@ const Dashboard = () => {
                                             placeholder={isUploading ? "Uploading file..." : (isConnected ? "Our shared feelings..." : "Connecting...")}
                                             disabled={!isConnected || isUploading}
                                             rows={1}
-                                            className="w-full bg-transparent text-rose-900 px-4 md:px-5 py-3 md:py-4 text-sm md:text-base focus:outline-none resize-none max-h-24 md:max-h-32 custom-scrollbar placeholder-rose-200 disabled:opacity-50 font-medium"
-                                            style={{ minHeight: '48px' }}
+                                            className="w-full bg-transparent text-rose-900 px-4 md:px-5 py-3 text-sm md:text-base focus:outline-none resize-none custom-scrollbar placeholder-rose-300 disabled:opacity-50 font-medium my-auto leading-relaxed"
+                                            style={{ minHeight: '48px', height: '48px' }}
                                         />
                                     </div>
                                 )}
@@ -1222,7 +1263,7 @@ const Dashboard = () => {
 
                                 {(!newMessage.trim() && !isRecording) ? (
                                     <button type="button" onClick={startRecording} disabled={!isConnected || isUploading}
-                                        className="bg-rose-500 text-white rounded-2xl md:rounded-3xl h-12 w-12 md:h-14 md:w-14 flex items-center justify-center hover:bg-rose-400 focus:outline-none focus:ring-4 focus:ring-rose-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-rose-900/10 transform hover:-translate-y-0.5 active:translate-y-0 disabled:transform-none shrink-0 mb-0">
+                                        className="bg-rose-500 text-white rounded-2xl md:rounded-3xl h-[48px] w-[48px] md:h-[56px] md:w-[56px] flex items-center justify-center hover:bg-rose-400 focus:outline-none focus:ring-4 focus:ring-rose-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-rose-900/10 transform hover:-translate-y-0.5 active:translate-y-0 disabled:transform-none shrink-0 mb-0">
                                         <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
                                     </button>
                                 ) : (
@@ -1230,7 +1271,7 @@ const Dashboard = () => {
                                         type={isRecording ? "button" : "submit"}
                                         onClick={isRecording ? stopRecording : undefined}
                                         disabled={(!newMessage.trim() && !isRecording) || !isConnected || isUploading}
-                                        className={`text-white rounded-2xl md:rounded-3xl h-12 w-12 md:h-14 md:w-14 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg transform hover:-translate-y-0.5 active:translate-y-0 disabled:transform-none shrink-0 mb-0 ${isRecording
+                                        className={`text-white rounded-2xl md:rounded-3xl h-[48px] w-[48px] md:h-[56px] md:w-[56px] flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg transform hover:-translate-y-0.5 active:translate-y-0 disabled:transform-none shrink-0 mb-0 ${isRecording
                                             ? 'bg-gradient-to-tr from-red-500 to-rose-400 focus:ring-red-500 shadow-red-900/30'
                                             : 'bg-gradient-to-tr from-[#ff4d6d] to-[#ff85a1] focus:ring-[#ff4d6d] shadow-[#ff4d6d]/40'
                                             }`}
