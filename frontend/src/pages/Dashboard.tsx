@@ -27,6 +27,10 @@ const Dashboard = () => {
     const [isUploading, setIsUploading] = useState(false);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const docInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
+    const audioInputRef = useRef<HTMLInputElement>(null);
+    const [showContactModal, setShowContactModal] = useState(false);
+    const [showPollModal, setShowPollModal] = useState(false);
 
     // Audio Voice Memos
     const [isRecording, setIsRecording] = useState(false);
@@ -846,7 +850,7 @@ const Dashboard = () => {
     if (!currentUser) return null;
 
     return (
-        <div className="flex h-[100dvh] bg-[#fff0f3] font-sans text-gray-900 overflow-hidden relative" onClick={() => showAttachMenu && setShowAttachMenu(false)}>
+        <div className="absolute inset-0 flex bg-[#fff0f3] font-sans text-gray-900 overflow-hidden" onClick={() => showAttachMenu && setShowAttachMenu(false)}>
 
             {/* Sidebar */}
             <div className={`w-full md:w-80 lg:w-96 border-r border-white/60 flex flex-col glass-morphism z-20 transition-all duration-300 absolute md:relative h-full ${!showSidebar ? '-translate-x-full md:translate-x-0' : 'translate-x-0'
@@ -1019,7 +1023,7 @@ const Dashboard = () => {
                 {activeChat ? (
                     <>
                         {/* Header */}
-                        <div className="px-3 md:px-4 py-3 md:py-4 border-b border-[#ff4d6d]/15 bg-white/70 backdrop-blur-md flex justify-between items-center shadow-[0_4px_20px_-10px_rgba(255,77,109,0.15)] z-20 sticky top-0">
+                        <div className="px-3 md:px-4 py-3 md:py-4 border-b border-[#ff4d6d]/15 bg-white/70 backdrop-blur-md flex justify-between items-center shadow-[0_4px_20px_-10px_rgba(255,77,109,0.15)] z-20 flex-shrink-0 relative">
                             <div className="flex items-center space-x-3 w-full">
                                 <button onClick={() => setShowSidebar(true)} className="md:hidden p-2 -ml-2 text-[#ff4d6d] hover:bg-[#ff4d6d]/10 rounded-xl transition-all">
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
@@ -1116,6 +1120,53 @@ const Dashboard = () => {
                                                     </div>
                                                     <div className="font-medium text-sm truncate max-w-[150px]">{msg.content || "Download File"}</div>
                                                 </a>
+                                            ) : msg.type === 'CONTACT' ? (
+                                                (() => {
+                                                    try {
+                                                        const contact = JSON.parse(msg.content);
+                                                        return (
+                                                            <div className="bg-white/10 p-3 rounded-2xl w-48 md:w-56 mt-1 flex flex-col space-y-3 shadow-inner">
+                                                                <div className="flex flex-row items-center space-x-3">
+                                                                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${isMe ? 'from-white/40 to-white/10' : 'from-[#ff4d6d] to-[#ff85a1] text-white'} flex items-center justify-center font-bold text-lg leading-none shrink-0 shadow-sm`}>{contact.name?.charAt(0).toUpperCase()}</div>
+                                                                    <div className="truncate shrink">
+                                                                        <div className="font-bold text-sm truncate">{contact.name}</div>
+                                                                        <div className="text-[10px] opacity-70 truncate">{contact.phone}</div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="border-t border-current opacity-60"></div>
+                                                                <div className="text-center text-[10px] font-black uppercase tracking-widest cursor-pointer hover:opacity-70 transition-all opacity-90">Message</div>
+                                                            </div>
+                                                        );
+                                                    } catch {
+                                                        return <div className="text-[13px] md:text-sm">Contact (Encryption Hidden)</div>;
+                                                    }
+                                                })()
+                                            ) : msg.type === 'POLL' ? (
+                                                (() => {
+                                                    try {
+                                                        const poll = JSON.parse(msg.content);
+                                                        return (
+                                                            <div className="bg-white/10 p-4 rounded-2xl w-full max-w-sm mt-1 flex flex-col space-y-3 shadow-inner">
+                                                                <div className="font-black text-sm mb-1 leading-snug">{poll.question}</div>
+                                                                <div className="space-y-1.5">
+                                                                    {poll.options.map((opt: any) => (
+                                                                        <button key={opt.id} className="w-full bg-black/10 hover:bg-black/20 rounded-xl p-2.5 text-xs font-bold text-left transition-all flex justify-between items-center group shadow-sm border border-white/5">
+                                                                            <div className="flex items-center space-x-2">
+                                                                                <div className={`w-4 h-4 rounded-full border-2 ${isMe ? 'border-white/50 group-hover:bg-white/30' : 'border-[#ff4d6d] group-hover:bg-[#ff4d6d]/20'}`}></div>
+                                                                                <span>{opt.text}</span>
+                                                                            </div>
+                                                                            <span className="opacity-60 text-[10px]">{opt.votes}</span>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                                <div className="border-t border-current opacity-40"></div>
+                                                                <div className="text-center text-[9px] font-black uppercase tracking-widest opacity-80">View Votes</div>
+                                                            </div>
+                                                        );
+                                                    } catch {
+                                                        return <div className="text-[13px] md:text-sm">Poll (Encryption Hidden)</div>;
+                                                    }
+                                                })()
                                             ) : (
                                                 <div className="text-[13px] md:text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</div>
                                             )}
@@ -1193,19 +1244,47 @@ const Dashboard = () => {
 
                                 <div className="relative">
                                     {showAttachMenu && (
-                                        <div className="absolute bottom-full left-0 mb-4 bg-white/90 border border-white/60 rounded-[2rem] p-4 shadow-2xl flex flex-col space-y-3 z-50 animate-fade-in-up w-max backdrop-blur-xl">
-                                            <button type="button" onClick={() => { imageInputRef.current?.click(); setShowAttachMenu(false); }} className="flex items-center space-x-4 group pr-6 p-2 rounded-2xl hover:bg-rose-50 transition-all">
-                                                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#ff4d6d] to-[#ff85a1] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                                                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        <div className="absolute bottom-full left-0 mb-4 bg-white rounded-3xl p-3 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.2)] flex flex-col space-y-1 z-50 animate-fade-in-up w-56 border border-gray-100">
+                                            <button type="button" onClick={() => { docInputRef.current?.click(); setShowAttachMenu(false); }} className="flex items-center space-x-4 group p-2 hover:bg-gray-50 rounded-2xl transition-all">
+                                                <div className="w-10 h-10 rounded-full bg-[#7f66ff] flex items-center justify-center shrink-0 shadow-sm text-white">
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                                                 </div>
-                                                <span className="text-sm font-black text-rose-900 group-hover:text-rose-600 tracking-tight">Photos & Videos</span>
+                                                <span className="text-sm font-semibold text-gray-700">Document</span>
                                             </button>
 
-                                            <button type="button" onClick={() => { docInputRef.current?.click(); setShowAttachMenu(false); }} className="flex items-center space-x-4 group pr-6 p-2 rounded-2xl hover:bg-rose-50 transition-all">
-                                                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#ff4d6d] to-[#ff85a1] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                                                    <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                            <button type="button" onClick={() => { imageInputRef.current?.click(); setShowAttachMenu(false); }} className="flex items-center space-x-4 group p-2 hover:bg-gray-50 rounded-2xl transition-all">
+                                                <div className="w-10 h-10 rounded-full bg-[#007bfc] flex items-center justify-center shrink-0 shadow-sm text-white">
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                                 </div>
-                                                <span className="text-sm font-black text-rose-900 group-hover:text-rose-600 tracking-tight">Documents</span>
+                                                <span className="text-sm font-semibold text-gray-700">Photos & videos</span>
+                                            </button>
+
+                                            <button type="button" onClick={() => { cameraInputRef.current?.click(); setShowAttachMenu(false); }} className="flex items-center space-x-4 group p-2 hover:bg-gray-50 rounded-2xl transition-all">
+                                                <div className="w-10 h-10 rounded-full bg-[#ff2e74] flex items-center justify-center shrink-0 shadow-sm text-white">
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                </div>
+                                                <span className="text-sm font-semibold text-gray-700">Camera</span>
+                                            </button>
+
+                                            <button type="button" onClick={() => { audioInputRef.current?.click(); setShowAttachMenu(false); }} className="flex items-center space-x-4 group p-2 hover:bg-gray-50 rounded-2xl transition-all">
+                                                <div className="w-10 h-10 rounded-full bg-[#ff7f00] flex items-center justify-center shrink-0 shadow-sm text-white">
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" /></svg>
+                                                </div>
+                                                <span className="text-sm font-semibold text-gray-700">Audio</span>
+                                            </button>
+
+                                            <button type="button" onClick={() => { setShowContactModal(true); setShowAttachMenu(false); }} className="flex items-center space-x-4 group p-2 hover:bg-gray-50 rounded-2xl transition-all">
+                                                <div className="w-10 h-10 rounded-full bg-[#00a5ff] flex items-center justify-center shrink-0 shadow-sm text-white">
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                                </div>
+                                                <span className="text-sm font-semibold text-gray-700">Contact</span>
+                                            </button>
+
+                                            <button type="button" onClick={() => { setShowPollModal(true); setShowAttachMenu(false); }} className="flex items-center space-x-4 group p-2 hover:bg-gray-50 rounded-2xl transition-all">
+                                                <div className="w-10 h-10 rounded-full bg-[#ffb400] flex items-center justify-center shrink-0 shadow-sm text-white">
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                                                </div>
+                                                <span className="text-sm font-semibold text-gray-700">Poll</span>
                                             </button>
                                         </div>
                                     )}
@@ -1260,6 +1339,8 @@ const Dashboard = () => {
 
                                 <input type="file" accept="image/*,video/*" ref={imageInputRef} className="hidden" onChange={handleFileSelect} />
                                 <input type="file" ref={docInputRef} className="hidden" onChange={handleFileSelect} />
+                                <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={handleFileSelect} />
+                                <input type="file" accept="audio/*" ref={audioInputRef} className="hidden" onChange={handleFileSelect} />
 
                                 {(!newMessage.trim() && !isRecording) ? (
                                     <button type="button" onClick={startRecording} disabled={!isConnected || isUploading}
@@ -1615,6 +1696,95 @@ const Dashboard = () => {
                     </div>
                 )
             }
+
+            {/* Contact Share Modal */}
+            {showContactModal && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in" onClick={() => setShowContactModal(false)}>
+                    <div className="w-full max-w-sm bg-white rounded-3xl p-5 md:p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-black text-gray-800 mb-4 tracking-tight">Share Contact</h3>
+                        <div className="space-y-1 max-h-[50vh] overflow-y-auto custom-scrollbar pr-2 border-y border-gray-100 py-2">
+                            {users.map(u => (
+                                <button key={u.id} onClick={async () => {
+                                    if (!activeChat) return;
+                                    const payload = JSON.stringify({ name: u.username, phone: u.email, id: u.id });
+                                    const otherParticipant = !activeChat.isGroup ? activeChat.participants.find((p: any) => p.id !== currentUser.id) : null;
+                                    let contentToSend = payload;
+                                    let isEncrypted = false;
+                                    if (otherParticipant && otherParticipant.publicKey) {
+                                        const encrypted = await encryptText(contentToSend, otherParticipant.publicKey);
+                                        localStorage.setItem(`sent_msg_${encrypted}`, contentToSend);
+                                        contentToSend = encrypted;
+                                        isEncrypted = true;
+                                    }
+                                    const chatMessage = { chatId: activeChat.id, senderId: currentUser.id, content: contentToSend, type: "CONTACT", encrypted: isEncrypted };
+                                    stompClientRef.current?.publish({ destination: '/app/chat.sendMessage', body: JSON.stringify(chatMessage) });
+                                    setShowContactModal(false);
+                                }} className="flex items-center space-x-3 w-full p-2.5 hover:bg-[#ff4d6d]/10 rounded-2xl transition-all group">
+                                    <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#ff4d6d] to-[#ff85a1] flex items-center justify-center text-white font-bold text-sm shadow-md group-hover:scale-105 transition-transform shrink-0">
+                                        {u.username.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="text-left w-full truncate">
+                                        <div className="font-bold text-gray-800 text-sm truncate">{u.username}</div>
+                                        <div className="text-xs text-gray-500 truncate">{u.email}</div>
+                                    </div>
+                                </button>
+                            ))}
+                            {users.length === 0 && <div className="text-center text-sm text-gray-400 py-6">No contacts available to share</div>}
+                        </div>
+                        <div className="mt-4 flex justify-end">
+                            <button onClick={() => setShowContactModal(false)} className="text-[#ff4d6d] bg-[#ff4d6d]/10 hover:bg-[#ff4d6d]/20 font-bold px-6 py-2.5 rounded-xl transition-all">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Poll Creation Modal */}
+            {showPollModal && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in" onClick={() => setShowPollModal(false)}>
+                    <div className="w-full max-w-sm bg-white rounded-3xl p-5 md:p-6 shadow-2xl animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-black text-gray-800 mb-4 tracking-tight">Create Poll</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] uppercase font-black tracking-widest text-[#ffb400] ml-2 mb-1 block">Question</label>
+                                <input id="poll-q" type="text" placeholder="Ask a question" autoFocus className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#ffb400]/50 placeholder-gray-400" />
+                            </div>
+                            <div>
+                                <label className="text-[10px] uppercase font-black tracking-widest text-gray-400 ml-2 mb-1 block">Options</label>
+                                <div className="space-y-2">
+                                    <input id="poll-o1" type="text" placeholder="Option 1" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#ffb400]/30 font-medium" />
+                                    <input id="poll-o2" type="text" placeholder="Option 2" className="w-full bg-gray-50 border border-gray-100 rounded-xl px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#ffb400]/30 font-medium" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-6 flex justify-end space-x-3">
+                            <button onClick={() => setShowPollModal(false)} className="text-gray-500 hover:bg-gray-100 font-bold px-5 py-3 rounded-xl transition-all">Cancel</button>
+                            <button onClick={async () => {
+                                if (!activeChat) return;
+                                const q = (document.getElementById('poll-q') as HTMLInputElement).value.trim();
+                                const o1 = (document.getElementById('poll-o1') as HTMLInputElement).value.trim();
+                                const o2 = (document.getElementById('poll-o2') as HTMLInputElement).value.trim();
+                                if (!q || !o1 || !o2) { showNotification("All poll fields required", "error"); return; }
+
+                                const payload = JSON.stringify({ question: q, options: [{ id: 1, text: o1, votes: 0 }, { id: 2, text: o2, votes: 0 }] });
+                                const otherParticipant = !activeChat.isGroup ? activeChat.participants.find((p: any) => p.id !== currentUser.id) : null;
+                                let contentToSend = payload;
+                                let isEncrypted = false;
+                                if (otherParticipant && otherParticipant.publicKey) {
+                                    const encrypted = await encryptText(contentToSend, otherParticipant.publicKey);
+                                    localStorage.setItem(`sent_msg_${encrypted}`, contentToSend);
+                                    contentToSend = encrypted;
+                                    isEncrypted = true;
+                                }
+                                const chatMessage = { chatId: activeChat.id, senderId: currentUser.id, content: contentToSend, type: "POLL", encrypted: isEncrypted };
+                                stompClientRef.current?.publish({ destination: '/app/chat.sendMessage', body: JSON.stringify(chatMessage) });
+                                setShowPollModal(false);
+                            }} className="bg-[#ffb400] text-white font-black px-6 py-3 rounded-xl shadow-lg shadow-[#ffb400]/30 hover:scale-105 active:scale-95 transition-all outline-none focus:ring-4 focus:ring-[#ffb400]/50 tracking-wide">
+                                SEND POLL
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
