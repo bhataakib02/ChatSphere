@@ -816,14 +816,32 @@ const Dashboard = () => {
     };
 
     const ensureE2EEKeys = async (user: any) => {
-        const storedKeys = localStorage.getItem(`chat_keys_${user.id}`);
-        if (storedKeys) return;
-
+        let storedKeys = localStorage.getItem(`chat_keys_${user.id}`);
         const secret = getSyncSecret();
         if (!secret) return;
 
-        // If server has an encrypted private key, try to sync it automatically
-        if (user.encryptedPrivateKey) {
+        // CHECK CONVERGENCE: If we have keys but they don't match the server's ground truth
+        if (storedKeys && user.publicKey) {
+            try {
+                const { publicKey } = JSON.parse(storedKeys);
+                if (publicKey !== user.publicKey && user.encryptedPrivateKey) {
+                    console.warn("Device out of sync with server. Attempting automatic convergence...");
+                    const decryptedPk = decryptWithSecret(user.encryptedPrivateKey, secret);
+                    localStorage.setItem(`chat_keys_${user.id}`, JSON.stringify({
+                        publicKey: user.publicKey,
+                        privateKey: decryptedPk
+                    }));
+                    console.log("Device converged with server keys.");
+                    // Refresh current state
+                    storedKeys = localStorage.getItem(`chat_keys_${user.id}`);
+                }
+            } catch (e) {
+                console.error("Convergence check failed", e);
+            }
+        }
+
+        // CASE 1: Device has no keys, but server DOES. Sync from server.
+        if (!storedKeys && user.encryptedPrivateKey) {
             console.log("Syncing E2EE keys from server...");
             try {
                 const decryptedPk = decryptWithSecret(user.encryptedPrivateKey, secret);
@@ -834,10 +852,33 @@ const Dashboard = () => {
                 console.log("E2EE keys synced automatically.");
                 return;
             } catch (e) {
-                console.error("Auto-sync failed", e);
+                console.error("Auto-sync failed. Keys might be corrupted or password changed.", e);
             }
         }
 
+        // CASE 2: Device HAS keys, but server is MISSING backup. Backup to server.
+        if (storedKeys && !user.encryptedPrivateKey) {
+            console.log("Backing up local E2EE keys to server...");
+            try {
+                const { privateKey } = JSON.parse(storedKeys);
+                const encPk = encryptWithSecret(privateKey, secret);
+                await api.put(`/users/${user.id}`, {
+                    ...user,
+                    encryptedPrivateKey: encPk
+                });
+                user.encryptedPrivateKey = encPk;
+                localStorage.setItem("user", JSON.stringify(user));
+                setCurrentUser({ ...user });
+                console.log("Local keys backed up to server.");
+            } catch (e) {
+                console.error("Backup failed", e);
+            }
+            return;
+        }
+
+        if (storedKeys) return;
+
+        // CASE 3: No keys anywhere. Generate fresh.
         console.log("Generating fresh E2EE keys...");
         try {
             const keyPair = await window.crypto.subtle.generateKey(
