@@ -824,6 +824,9 @@ const Dashboard = () => {
                 ...user,
                 publicKey: publicKeyBase64
             });
+            user.publicKey = publicKeyBase64;
+            localStorage.setItem("user", JSON.stringify(user));
+            setCurrentUser(user);
             console.log("E2EE keys synced.");
         } catch (err) {
             console.error("Encryption error", err);
