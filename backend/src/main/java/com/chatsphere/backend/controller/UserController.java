@@ -41,6 +41,9 @@ public class UserController {
             if (userDetails.getPublicKey() != null) {
                 user.setPublicKey(userDetails.getPublicKey());
             }
+            if (userDetails.getEncryptedPrivateKey() != null) {
+                user.setEncryptedPrivateKey(userDetails.getEncryptedPrivateKey());
+            }
             User updated = userRepository.save(user);
             return ResponseEntity.ok(updated);
         }).orElse(ResponseEntity.notFound().build());

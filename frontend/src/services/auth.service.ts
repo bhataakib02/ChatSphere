@@ -10,9 +10,6 @@ class AuthService {
             .then(response => {
                 if (response.data.token) {
                     localStorage.setItem('user', JSON.stringify(response.data));
-                    // Store a derived secret in sessionStorage (cleared on tab close)
-                    // We use this to decrypt the E2EE private key without storing the actual password.
-                    sessionStorage.setItem('kds', btoa(password)); 
                 }
                 return response.data;
             });

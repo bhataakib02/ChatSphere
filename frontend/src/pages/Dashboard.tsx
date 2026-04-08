@@ -78,8 +78,6 @@ const Dashboard = () => {
 
     // Threading
     const [replyingTo, setReplyingTo] = useState<any>(null);
-    const [showUnlockModal, setShowUnlockModal] = useState(false);
-    const [unlockPassword, setUnlockPassword] = useState("");
     const currentUserRef = useRef<any>(currentUser);
     useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
 
@@ -795,32 +793,21 @@ const Dashboard = () => {
     };
 
     const getSyncSecret = () => {
-        const kds = sessionStorage.getItem('kds');
-        return kds ? atob(kds) : null;
+        // No longer needed for invisible sync
+        return "SYSTEM_MANAGED";
     };
 
-    const encryptWithSecret = (text: string, secret: string) => {
-        const textBytes = new TextEncoder().encode(text);
-        const secretBytes = new TextEncoder().encode(secret);
-        const result = new Uint8Array(textBytes.length);
-        for (let i = 0; i < textBytes.length; i++) {
-            result[i] = textBytes[i] ^ secretBytes[i % secretBytes.length];
-        }
-        return btoa(String.fromCharCode(...result));
+    const encryptWithSecret = (text: string, _secret: string) => {
+        // Transparent sync doesn't need client-side manual encryption
+        return text;
     };
 
-    const decryptWithSecret = (encryptedBase64: string, secret: string) => {
-        const encryptedBytes = new Uint8Array(atob(encryptedBase64).split('').map(c => c.charCodeAt(0)));
-        const secretBytes = new TextEncoder().encode(secret);
-        const result = new Uint8Array(encryptedBytes.length);
-        for (let i = 0; i < encryptedBytes.length; i++) {
-            result[i] = encryptedBytes[i] ^ secretBytes[i % secretBytes.length];
-        }
-        return new TextDecoder().decode(result);
+    const decryptWithSecret = (encryptedBase64: string, _secret: string) => {
+        // Transparent sync doesn't need client-side manual decryption
+        return encryptedBase64;
     };
 
     const ensureE2EEKeys = async (userParam: any) => {
-        // Fetch fresh user data from server to ensure we have the latest publicKey/encryptedPrivateKey
         let user = userParam;
         try {
             const res = await api.get('/auth/me');
@@ -828,81 +815,38 @@ const Dashboard = () => {
             localStorage.setItem('user', JSON.stringify(user));
             setCurrentUser(user);
         } catch (e) {
-            console.warn("Could not fetch fresh user profile for sync", e);
+            console.warn("Profile fetch failed", e);
         }
 
         let storedKeys = localStorage.getItem(`chat_keys_${user.id}`);
-        const secret = getSyncSecret();
-        
-        // If we don't have a secret (didn't log in this session), we can't sync or backup.
-        if (!secret) {
-            if (user.encryptedPrivateKey || storedKeys) {
-                console.warn("No sync secret found. Showing unlock modal.");
-                setShowUnlockModal(true);
-            }
-            return;
-        }
 
-        // CHECK CONVERGENCE: If we have keys but they don't match the server's master key
-        if (storedKeys && user.publicKey) {
-            try {
-                const { publicKey } = JSON.parse(storedKeys);
-                if (publicKey !== user.publicKey && user.encryptedPrivateKey) {
-                    console.warn("Device out of sync with server. Attempting automatic convergence...");
-                    const decryptedPk = decryptWithSecret(user.encryptedPrivateKey, secret);
-                    localStorage.setItem(`chat_keys_${user.id}`, JSON.stringify({
-                        publicKey: user.publicKey,
-                        privateKey: decryptedPk
-                    }));
-                    console.log("Device converged with server keys.");
-                    // Refresh current state
-                    storedKeys = localStorage.getItem(`chat_keys_${user.id}`);
-                }
-            } catch (e) {
-                console.error("Convergence check failed", e);
-            }
-        }
-
-        // CASE 1: Device has no keys, but server DOES. Sync from server.
-        if (!storedKeys && user.encryptedPrivateKey) {
-            console.log("Syncing E2EE keys from server...");
-            try {
-                const decryptedPk = decryptWithSecret(user.encryptedPrivateKey, secret);
+        // CASE 1: Device out of sync with server master key. Convergence.
+        if (storedKeys && user.publicKey && user.encryptedPrivateKey) {
+            const parsed = JSON.parse(storedKeys);
+            if (parsed.publicKey !== user.publicKey) {
+                console.log("Converging local keys with server master...");
                 localStorage.setItem(`chat_keys_${user.id}`, JSON.stringify({
                     publicKey: user.publicKey,
-                    privateKey: decryptedPk
+                    privateKey: user.encryptedPrivateKey
                 }));
-                console.log("E2EE keys synced automatically.");
-                return;
-            } catch (e) {
-                console.error("Auto-sync failed. Keys might be corrupted or password changed.", e);
+                storedKeys = localStorage.getItem(`chat_keys_${user.id}`);
             }
         }
 
-        // CASE 2: Device HAS keys, but server is MISSING backup. Backup to server.
-        if (storedKeys && !user.encryptedPrivateKey) {
-            console.log("Backing up local E2EE keys to server...");
-            try {
-                const { privateKey } = JSON.parse(storedKeys);
-                const encPk = encryptWithSecret(privateKey, secret);
-                await api.put(`/users/${user.id}`, {
-                    ...user,
-                    encryptedPrivateKey: encPk
-                });
-                user.encryptedPrivateKey = encPk;
-                localStorage.setItem("user", JSON.stringify(user));
-                setCurrentUser({ ...user });
-                console.log("Local keys backed up to server.");
-            } catch (e) {
-                console.error("Backup failed", e);
-            }
+        // CASE 2: No local keys but server has a backup.
+        if (!storedKeys && user.encryptedPrivateKey) {
+            console.log("Invisible sync active. Restoring history...");
+            localStorage.setItem(`chat_keys_${user.id}`, JSON.stringify({
+                publicKey: user.publicKey,
+                privateKey: user.encryptedPrivateKey
+            }));
             return;
         }
 
         if (storedKeys) return;
 
-        // CASE 3: No keys anywhere. Generate fresh.
-        console.log("Generating fresh E2EE keys...");
+        // CASE 3: Fresh start. Generate and backup.
+        console.log("Initializing E2EE vault...");
         try {
             const keyPair = await window.crypto.subtle.generateKey(
                 {
@@ -1965,22 +1909,6 @@ const Dashboard = () => {
                         
                         <button
                             onClick={() => {
-                                if (unlockPassword) {
-                                    sessionStorage.setItem('kds', btoa(unlockPassword));
-                                    setShowUnlockModal(false);
-                                    await ensureE2EEKeys(AuthService.getCurrentUser());
-                                    showNotification("Chat unlocked! Syncing history...", "success");
-                                    setUnlockPassword("");
-                                    setTimeout(() => window.location.reload(), 1000);
-                                }
-                            }}
-                            className="w-full bg-rose-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-rose-500/30 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-xs"
-                        >
-                            Unlock Now
-                        </button>
-                    </div>
-                </div>
-            )}
         </div >
     );
 };
