@@ -839,6 +839,9 @@ const Dashboard = () => {
                     privateKey: user.encryptedPrivateKey
                 }));
                 storedKeys = localStorage.getItem(`chat_keys_${user.id}`);
+                if (!sessionStorage.getItem('kds')) {
+                    setShowUnlockModal(true);
+                }
             }
         }
 
@@ -849,6 +852,9 @@ const Dashboard = () => {
                 publicKey: user.publicKey,
                 privateKey: user.encryptedPrivateKey
             }));
+            if (!sessionStorage.getItem('kds')) {
+                setShowUnlockModal(true);
+            }
             return;
         }
 
