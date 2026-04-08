@@ -78,6 +78,10 @@ const Dashboard = () => {
 
     // Threading
     const [replyingTo, setReplyingTo] = useState<any>(null);
+    const [showUnlockModal, setShowUnlockModal] = useState(false);
+    const [unlockPassword, setUnlockPassword] = useState("");
+    const currentUserRef = useRef<any>(currentUser);
+    useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
 
     const stompClientRef = useRef<Client | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -269,16 +273,16 @@ const Dashboard = () => {
             try {
                 const parsed = JSON.parse(msg.content);
                 if (parsed.r && parsed.m) {
-                    cipherText = (msg.sender?.id === currentUser.id) ? parsed.m : parsed.r;
+                    cipherText = (msg.sender?.id === currentUserRef.current?.id) ? parsed.m : parsed.r;
                     isLegacy = false;
                 }
             } catch { }
 
-            if (msg.sender?.id !== currentUser.id) {
-                msg.content = await decryptText(cipherText, currentUser.id);
+            if (msg.sender?.id !== currentUserRef.current?.id) {
+                msg.content = await decryptText(cipherText, currentUserRef.current?.id);
             } else {
                 if (!isLegacy) {
-                    msg.content = await decryptText(cipherText, currentUser.id);
+                    msg.content = await decryptText(cipherText, currentUserRef.current?.id);
                 } else {
                     const cached = localStorage.getItem(`sent_msg_${msg.content}`);
                     if (cached) { msg.content = cached; } else { msg.content = "🔒 [Encrypted Legacy Message]"; }
@@ -306,16 +310,16 @@ const Dashboard = () => {
                     try {
                         const parsed = JSON.parse(msg.content);
                         if (parsed.r && parsed.m) {
-                            cipherText = (msg.sender?.id === currentUser.id) ? parsed.m : parsed.r;
+                            cipherText = (msg.sender?.id === currentUserRef.current?.id) ? parsed.m : parsed.r;
                             isLegacy = false;
                         }
                     } catch { }
 
-                    if (msg.sender?.id !== currentUser.id) {
-                        return { ...msg, content: await decryptText(cipherText, currentUser.id) };
+                    if (msg.sender?.id !== currentUserRef.current?.id) {
+                        return { ...msg, content: await decryptText(cipherText, currentUserRef.current?.id) };
                     } else {
                         if (!isLegacy) {
-                            return { ...msg, content: await decryptText(cipherText, currentUser.id) };
+                            return { ...msg, content: await decryptText(cipherText, currentUserRef.current?.id) };
                         } else {
                             const cached = localStorage.getItem(`sent_msg_${msg.content}`);
                             if (cached) return { ...msg, content: cached };
@@ -815,12 +819,31 @@ const Dashboard = () => {
         return new TextDecoder().decode(result);
     };
 
-    const ensureE2EEKeys = async (user: any) => {
+    const ensureE2EEKeys = async (userParam: any) => {
+        // Fetch fresh user data from server to ensure we have the latest publicKey/encryptedPrivateKey
+        let user = userParam;
+        try {
+            const res = await api.get('/auth/me');
+            user = res.data;
+            localStorage.setItem('user', JSON.stringify(user));
+            setCurrentUser(user);
+        } catch (e) {
+            console.warn("Could not fetch fresh user profile for sync", e);
+        }
+
         let storedKeys = localStorage.getItem(`chat_keys_${user.id}`);
         const secret = getSyncSecret();
-        if (!secret) return;
+        
+        // If we don't have a secret (didn't log in this session), we can't sync or backup.
+        if (!secret) {
+            if (user.encryptedPrivateKey || storedKeys) {
+                console.warn("No sync secret found. Showing unlock modal.");
+                setShowUnlockModal(true);
+            }
+            return;
+        }
 
-        // CHECK CONVERGENCE: If we have keys but they don't match the server's ground truth
+        // CHECK CONVERGENCE: If we have keys but they don't match the server's master key
         if (storedKeys && user.publicKey) {
             try {
                 const { publicKey } = JSON.parse(storedKeys);
@@ -1909,6 +1932,52 @@ const Dashboard = () => {
                                 SEND POLL
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Unlock Chat Modal */}
+            {showUnlockModal && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-rose-500/10 backdrop-blur-xl animate-fade-in">
+                    <div className="bg-white/90 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border border-rose-100/50 text-center">
+                        <div className="w-16 h-16 bg-rose-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-11a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-gray-800 mb-2 uppercase tracking-tight">Unlock Chat History</h3>
+                        <p className="text-sm text-gray-500 font-medium mb-6 leading-relaxed">Your messages are secured. Enter your password to unlock the encrypted synchronization.</p>
+                        
+                        <input
+                            type="password"
+                            placeholder="Current Password"
+                            value={unlockPassword}
+                            onChange={(e) => setUnlockPassword(e.target.value)}
+                            onKeyPress={(e) => { 
+                                if(e.key === 'Enter' && unlockPassword) { 
+                                    sessionStorage.setItem('kds', btoa(unlockPassword)); 
+                                    setShowUnlockModal(false); 
+                                    // Manually fetch user first to avoid stale state in render cycles
+                                    AuthService.getCurrentUser() && ensureE2EEKeys(AuthService.getCurrentUser()); 
+                                    showNotification("Chat unlocked!", "success");
+                                    setUnlockPassword("");
+                                } 
+                            }}
+                            className="w-full bg-rose-50/50 border border-rose-100 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:ring-4 focus:ring-rose-200 transition-all mb-4 text-center"
+                        />
+                        
+                        <button
+                            onClick={() => {
+                                if (unlockPassword) {
+                                    sessionStorage.setItem('kds', btoa(unlockPassword));
+                                    setShowUnlockModal(false);
+                                    await ensureE2EEKeys(AuthService.getCurrentUser());
+                                    showNotification("Chat unlocked! Syncing history...", "success");
+                                    setUnlockPassword("");
+                                    setTimeout(() => window.location.reload(), 1000);
+                                }
+                            }}
+                            className="w-full bg-rose-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-rose-500/30 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-xs"
+                        >
+                            Unlock Now
+                        </button>
                     </div>
                 </div>
             )}
