@@ -825,7 +825,6 @@ const Dashboard = () => {
         // If server has an encrypted private key, try to sync it automatically
         if (user.encryptedPrivateKey) {
             console.log("Syncing E2EE keys from server...");
-            setIsSyncingKeys(true);
             try {
                 const decryptedPk = decryptWithSecret(user.encryptedPrivateKey, secret);
                 localStorage.setItem(`chat_keys_${user.id}`, JSON.stringify({
