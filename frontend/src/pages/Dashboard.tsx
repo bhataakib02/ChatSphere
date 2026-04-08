@@ -1010,16 +1010,16 @@ const Dashboard = () => {
 
             {/* Chat Area */}
             <div className={`flex-1 flex flex-col bg-[#fff0f3] relative transition-transform duration-300 transform md:transform-none ${showSidebar ? 'translate-x-full md:translate-x-0 absolute w-full h-full' : 'translate-x-0'
-                }`}>
+                } z-30`}>
                 {/* Romantic Background */}
-                <div className="absolute inset-0 pointer-events-none opacity-10">
-                    <img src="https://www.transparenttextures.com/patterns/rose-petals.png" alt="BG" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 pointer-events-none opacity-[0.15]">
+                    <img src="https://www.transparenttextures.com/patterns/rose-petals.png" alt="BG" className="w-full h-full object-cover mix-blend-multiply" />
                 </div>
 
                 {activeChat ? (
                     <>
                         {/* Header */}
-                        <div className="px-4 py-3 md:py-4 border-b border-[#ff4d6d]/20 bg-white/60 backdrop-blur flex justify-between items-center shadow-sm z-10">
+                        <div className="px-3 md:px-4 py-3 md:py-4 border-b border-[#ff4d6d]/15 bg-white/70 backdrop-blur-md flex justify-between items-center shadow-[0_4px_20px_-10px_rgba(255,77,109,0.15)] z-20 sticky top-0">
                             <div className="flex items-center space-x-3 w-full">
                                 <button onClick={() => setShowSidebar(true)} className="md:hidden p-2 -ml-2 text-[#ff4d6d] hover:bg-[#ff4d6d]/10 rounded-xl transition-all">
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
