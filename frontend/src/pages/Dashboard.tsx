@@ -281,7 +281,7 @@ const Dashboard = () => {
                     msg.content = await decryptText(cipherText, currentUser.id);
                 } else {
                     const cached = localStorage.getItem(`sent_msg_${msg.content}`);
-                    if (cached) msg.content = cached;
+                    if (cached) { msg.content = cached; } else { msg.content = "🔒 [Encrypted Legacy Message]"; }
                 }
             }
         }
@@ -319,6 +319,7 @@ const Dashboard = () => {
                         } else {
                             const cached = localStorage.getItem(`sent_msg_${msg.content}`);
                             if (cached) return { ...msg, content: cached };
+                            return { ...msg, content: "🔒 [Encrypted Legacy Message]" };
                         }
                     }
                 }
@@ -1204,7 +1205,7 @@ const Dashboard = () => {
                                                     }
                                                 })()
                                             ) : (
-                                                <div className="text-[13px] md:text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</div>
+                                                <div className="text-[13px] md:text-sm leading-relaxed whitespace-pre-wrap break-all md:break-words">{msg.content}</div>
                                             )}
 
                                             <div className={`text-[9px] md:text-[10px] mt-1.5 md:mt-2 flex items-center justify-end space-x-1 ${isMe ? 'text-white/70' : 'text-primary-900/40'}`}>
