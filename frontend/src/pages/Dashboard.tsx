@@ -65,6 +65,8 @@ const Dashboard = () => {
     const [profileUsername, setProfileUsername] = useState("");
     const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
     const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+    const [showUnlockModal, setShowUnlockModal] = useState(false);
+    const [unlockPassword, setUnlockPassword] = useState("");
     const profilePhotoInputRef = useRef<HTMLInputElement>(null);
 
     // Search (setters reserved for future UI wiring)
@@ -792,22 +794,15 @@ const Dashboard = () => {
         });
     };
 
-    const getSyncSecret = () => {
-        // No longer needed for invisible sync
-        return "SYSTEM_MANAGED";
-    };
+    const secret = sessionStorage.getItem('kds') ? atob(sessionStorage.getItem('kds')!) : "SYSTEM_MANAGED";
 
     const encryptWithSecret = (text: string, _secret: string) => {
         // Transparent sync doesn't need client-side manual encryption
         return text;
     };
 
-    const decryptWithSecret = (encryptedBase64: string, _secret: string) => {
-        // Transparent sync doesn't need client-side manual decryption
-        return encryptedBase64;
-    };
-
     const ensureE2EEKeys = async (userParam: any) => {
+
         let user = userParam;
         try {
             const res = await api.get('/auth/me');
@@ -1888,29 +1883,46 @@ const Dashboard = () => {
                         </div>
                         <h3 className="text-xl font-black text-gray-800 mb-2 uppercase tracking-tight">Unlock Chat History</h3>
                         <p className="text-sm text-gray-500 font-medium mb-6 leading-relaxed">Your messages are secured. Enter your password to unlock the encrypted synchronization.</p>
-                        
+
                         <input
                             type="password"
                             placeholder="Current Password"
                             value={unlockPassword}
                             onChange={(e) => setUnlockPassword(e.target.value)}
-                            onKeyPress={(e) => { 
-                                if(e.key === 'Enter' && unlockPassword) { 
-                                    sessionStorage.setItem('kds', btoa(unlockPassword)); 
-                                    setShowUnlockModal(false); 
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter' && unlockPassword) {
+                                    sessionStorage.setItem('kds', btoa(unlockPassword));
+                                    setShowUnlockModal(false);
                                     // Manually fetch user first to avoid stale state in render cycles
-                                    AuthService.getCurrentUser() && ensureE2EEKeys(AuthService.getCurrentUser()); 
+                                    AuthService.getCurrentUser() && ensureE2EEKeys(AuthService.getCurrentUser());
                                     showNotification("Chat unlocked!", "success");
                                     setUnlockPassword("");
-                                } 
+                                }
                             }}
                             className="w-full bg-rose-50/50 border border-rose-100 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:ring-4 focus:ring-rose-200 transition-all mb-4 text-center"
                         />
-                        
+
                         <button
                             onClick={() => {
-        </div >
+                                if (unlockPassword) {
+                                    sessionStorage.setItem('kds', btoa(unlockPassword));
+                                    setShowUnlockModal(false);
+                                    // Manually fetch user first to avoid stale state in render cycles
+                                    AuthService.getCurrentUser() && ensureE2EEKeys(AuthService.getCurrentUser());
+                                    showNotification("Chat unlocked!", "success");
+                                    setUnlockPassword("");
+                                }
+                            }}
+                            className="w-full bg-[#ff4d6d] text-white font-black py-4 rounded-2xl shadow-lg shadow-[#ff4d6d]/20 hover:scale-105 active:scale-95 transition-all text-sm uppercase tracking-widest"
+                        >
+                            Unlock History
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 
 export default Dashboard;
+
