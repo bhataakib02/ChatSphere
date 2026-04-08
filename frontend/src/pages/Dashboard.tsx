@@ -806,7 +806,7 @@ const Dashboard = () => {
         let user = userParam;
         try {
             const res = await api.get('/auth/me');
-            user = res.data;
+            user = { ...user, ...res.data };
             localStorage.setItem('user', JSON.stringify(user));
             setCurrentUser(user);
         } catch (e) {
