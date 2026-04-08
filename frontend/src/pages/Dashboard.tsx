@@ -78,7 +78,6 @@ const Dashboard = () => {
 
     // Threading
     const [replyingTo, setReplyingTo] = useState<any>(null);
-    const [isSyncingKeys, setIsSyncingKeys] = useState(false);
 
     const stompClientRef = useRef<Client | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -834,11 +833,9 @@ const Dashboard = () => {
                     privateKey: decryptedPk
                 }));
                 console.log("E2EE keys synced automatically.");
-                setIsSyncingKeys(false);
                 return;
             } catch (e) {
                 console.error("Auto-sync failed", e);
-                setIsSyncingKeys(false);
             }
         }
 
@@ -881,10 +878,6 @@ const Dashboard = () => {
         } catch (err) {
             console.error("Encryption error", err);
         }
-    };
-
-    const handleImportKey = async () => {
-        // Obsolete with automatic sync
     };
 
     const handleProfilePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
