@@ -268,6 +268,18 @@ const Dashboard = () => {
 
     const handleIncomingMessage = async (msg: any) => {
         if (msg.encrypted && msg.content) {
+            // Priority 1: Local cache for sender's own messages
+            if (msg.sender?.id === currentUserRef.current?.id) {
+                const cached = localStorage.getItem(`sent_msg_${msg.content}`);
+                if (cached) {
+                    msg.content = cached;
+                    // Proceed to add to messages list
+                    setMessages(prev => (!prev.find(m => m.id === msg.id) ? [...prev, msg] : prev));
+                    return;
+                }
+            }
+
+            // Priority 2: Standard E2EE decryption
             let cipherText = msg.content;
             let isLegacy = true;
             try {
@@ -318,11 +330,13 @@ const Dashboard = () => {
                     if (msg.sender?.id !== currentUserRef.current?.id) {
                         return { ...msg, content: await decryptText(cipherText, currentUserRef.current?.id) };
                     } else {
+                        // Check local cache first for sender
+                        const cached = localStorage.getItem(`sent_msg_${msg.content}`);
+                        if (cached) return { ...msg, content: cached };
+
                         if (!isLegacy) {
                             return { ...msg, content: await decryptText(cipherText, currentUserRef.current?.id) };
                         } else {
-                            const cached = localStorage.getItem(`sent_msg_${msg.content}`);
-                            if (cached) return { ...msg, content: cached };
                             return { ...msg, content: "🔒 [Encrypted Legacy Message]" };
                         }
                     }
