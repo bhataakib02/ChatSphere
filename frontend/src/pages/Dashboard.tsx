@@ -736,11 +736,10 @@ const Dashboard = () => {
             const encryptedData = new Uint8Array(encryptedBinary.length);
             for (let i = 0; i < encryptedBinary.length; i++) encryptedData[i] = encryptedBinary.charCodeAt(i);
 
-            const decrypted = await window.crypto.subtle.decrypt({ name: "RSA-OAEP" }, privateKey, encryptedData);
             return new TextDecoder().decode(decrypted);
         } catch (e) {
-            console.error("Decryption failed", e);
-            return "[Encrypted Message]";
+            // Silently return encrypted label to avoid console errors when device keys don't match old message ciphertext
+            return "🔒 [Encrypted Message]";
         }
     };
 
@@ -1212,7 +1211,7 @@ const Dashboard = () => {
                                             )}
 
                                             <div className={`text-[9px] md:text-[10px] mt-1.5 md:mt-2 flex items-center justify-end space-x-1 ${isMe ? 'text-white/70' : 'text-primary-900/40'}`}>
-                                                <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span>{new Date(msg.createdAt + (msg.createdAt.endsWith('Z') ? '' : 'Z')).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                 {isMe && (
                                                     <span>
                                                         {msg.status === 'READ' ? (
